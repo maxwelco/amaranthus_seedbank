@@ -83,8 +83,12 @@ dt1 %>%
 ```
 
 
-
-
+```{r}
+data %>% 
+  ggplot(aes(x=retrieval_time_months, y=germ_percent)) +
+  geom_point() +
+  facet_grid(location~species)
+```
 
 
 
