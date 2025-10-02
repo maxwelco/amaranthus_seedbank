@@ -177,7 +177,7 @@ plot(lub_red1)
 
 ```{r}
 #| warning: false
-newdata <- expand.grid(retrieval_time_months=exp(seq(log(0.5), log(60), length=60)))
+newdata <- expand.grid(retrieval_time_months=seq(0, 60, length=60))
 
 broom:::augment.drc(lub_red1, newdata=newdata, conf.int = TRUE) -> pm_lub
 ```
@@ -201,9 +201,200 @@ lub_dt %>%
 ggsave("figures/Lubbock.png", width = 5, height = 5)
 ```
 
+```{r}
+tidy(lub_red1)
+```
+
+
+```{r}
+ED(lub_red1, c(10,50,90), interval = "delta")
+```
+
+
+## College Station 
+
+
+```{r}
+data1 %>% filter(location=="College Station") -> cs_dt
+```
+
+
+```{r}
+#| warning: false
+drm(viable_seed_as_percent_of_original ~ retrieval_time_months, fct = W1.3(),
+  curveid = interaction(species, depth_cm), data=cs_dt) -> cs_full
+
+```
+
+```{r}
+#| warning: false 
+drm(viable_seed_as_percent_of_original ~ retrieval_time_months, fct = W1.3(),
+   curveid = species, data=cs_dt) -> cs_red1
+```
+
+
+```{r}
+anova(cs_full, cs_red1)
+```
+
+
+```{r}
+tidy(cs_red1)
+```
+
+```{r}
+plot(cs_red1)
+```
+
+
+```{r}
+#| warning: false 
+newdata <- expand.grid(retrieval_time_months=seq(0, 60, length=60))
+
+newdata1 <- tibble(species="Palmer amaranth", newdata)
+newdata2 <- tibble(species="waterhemp", newdata)
+
+nd = rbind(newdata1, newdata2)
+
+broom:::augment.drc(cs_red1, newdata=nd, conf.int = TRUE) -> pm_cs
+
+cs_dt$retrieval_time_months0 <- cs_dt$retrieval_time_months
+cs_dt$retrieval_time_months0[cs_dt$retrieval_time_months0==0] <- 0.1
+```
+ 
+
+
+ 
+
+```{r}
+cs_dt %>% 
+  ggplot(aes(x=retrieval_time_months0, 
+             y=viable_seed_as_percent_of_original)) +
+#  coord_trans(x= "log") +
+  geom_line(data = pm_cs, aes(x = retrieval_time_months, y = .fitted, 
+                              color=species),
+            size = 1.2) +
+  geom_ribbon(data = pm_cs, mapping=aes(x = retrieval_time_months, y = .fitted, 
+                                         ymin=.lower, ymax=.upper, fill=species), 
+              alpha=0.1) +
+  geom_jitter(aes(color=species), alpha=0.1) +
+  theme_foundation() +
+  scale_color_colorblind() +
+  scale_fill_colorblind() +
+  facet_grid(~location) +
+  labs(x="Month after burial", 
+       y="Viable seed reduction (%)",
+       color="", fill="") +
+  scale_x_continuous(breaks = c(0, 12, 24, 36, 48, 60)) +
+  theme(strip.text = element_text(size=11,face="bold"),
+        legend.position = "bottom")
 
 
 
+ggsave("figures/College Station.png", width = 5, height = 5)
+```
+
+```{r}
+tidy(lub_red1)
+```
+
+
+```{r}
+ED(lub_red1, c(10,50,90), interval = "delta")
+```
+
+
+
+
+
+## Corpus Christi 
+
+
+```{r}
+data1 %>% filter(location=="Corpus Christi") -> cc_dt
+```
+
+
+```{r}
+#| warning: false
+drm(viable_seed_as_percent_of_original ~ retrieval_time_months, fct = W1.3(),
+  curveid = interaction(species, depth_cm), data=cc_dt) -> cc_full
+
+```
+
+```{r}
+#| warning: false 
+drm(viable_seed_as_percent_of_original ~ retrieval_time_months, fct = W1.3(),
+   curveid = species, data=cc_dt) -> cc_red1
+```
+
+
+```{r}
+anova(cc_full, cc_red1)
+```
+
+
+```{r}
+tidy(cc_red1)
+```
+
+```{r}
+plot(cc_red1)
+```
+
+
+```{r}
+#| warning: false 
+newdata <- expand.grid(retrieval_time_months=seq(0, 60, length=60))
+
+newdata1 <- tibble(species="Palmer amaranth", newdata)
+newdata2 <- tibble(species="waterhemp", newdata)
+
+nd = rbind(newdata1, newdata2)
+
+broom:::augment.drc(cc_red1, newdata=nd, conf.int = TRUE) -> pm_cc
+```
+ 
+
+
+ 
+
+```{r}
+cc_dt %>% 
+  ggplot(aes(x=retrieval_time_months, 
+             y=viable_seed_as_percent_of_original)) +
+#  coord_trans(x= "log") +
+  geom_line(data = pm_cc, aes(x = retrieval_time_months, y = .fitted, 
+                              color=species),
+            size = 1.2) +
+  geom_ribbon(data = pm_cc, mapping=aes(x = retrieval_time_months, y = .fitted, 
+                                         ymin=.lower, ymax=.upper, fill=species), 
+              alpha=0.1) +
+  geom_jitter(aes(color=species), alpha=0.1) +
+  theme_foundation() +
+  scale_color_colorblind() +
+  scale_fill_colorblind() +
+  facet_grid(~location) +
+  labs(x="Month after burial", 
+       y="Viable seed reduction (%)",
+       color="", fill="") +
+  scale_x_continuous(breaks = c(0, 12, 24, 36, 48, 60)) +
+  theme(strip.text = element_text(size=11,face="bold"),
+        legend.position = "bottom")
+
+
+
+ggsave("figures/Corpus Christi.png", width = 5, height = 5)
+```
+
+```{r}
+tidy(cc_red1)
+```
+
+
+```{r}
+ED(cc_red1, c(10,50,90), interval = "delta")
+```
 
 
 
