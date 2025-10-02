@@ -9,6 +9,8 @@ editor: source
 library(tidyverse)
 library(readxl)
 library(drc)
+library(ggthemes)
+library(broom)
 ```
 
 
@@ -109,21 +111,95 @@ ggsave("figures/raw_figure.png", width = 12, height = 7)
 
 
 
-```{r}
 
+
+
+```{r}
+#| warning: false
+#| 
+drm(viable_seed_as_percent_of_original ~ retrieval_time_months, fct = W1.4(),
+  curveid = interaction(species, location, depth_cm), data=data1) -> full_model
+
+```
+
+```{r}
+#| warning: false
+drm(viable_seed_as_percent_of_original ~ retrieval_time_months, fct = W1.4(),
+  curveid = interaction(species, location), data=data1) -> reduced_model
+```
+
+
+```{r}
+anova(full_model, reduced_model)
+```
+
+
+```{r}
+summary(full_model)
 ```
 
 
 
 
+Lubbock
+
+```{r}
+data1 %>% filter(location=="Lubbock") -> lub_dt
+```
+
+
+```{r}
+#| warning: false
+drm(viable_seed_as_percent_of_original ~ retrieval_time_months, fct = W1.3(),
+  curveid = interaction(species, depth_cm), data=lub_dt) -> lub_full
+
+```
+
+```{r}
+#| warning: false 
+drm(viable_seed_as_percent_of_original ~ retrieval_time_months, fct = W1.3(),
+   data=lub_dt) -> lub_red1
+```
+
+
+```{r}
+anova(lub_full, lub_red1)
+```
+
+
+```{r}
+tidy(lub_red1)
+```
+
+```{r}
+plot(lub_red1)
+```
+
+```{r}
+#| warning: false
+newdata <- expand.grid(retrieval_time_months=exp(seq(log(0.5), log(60), length=60)))
+
+broom:::augment.drc(lub_red1, newdata=newdata, conf.int = TRUE) -> pm_lub
+```
+
+```{r}
+lub_dt %>% 
+  ggplot(aes(x=retrieval_time_months, y=viable_seed_as_percent_of_original)) +
+  geom_jitter(alpha = 0.1, color="#0072B2") +
+  geom_line(data = pm_lub, aes(x = retrieval_time_months, y = .fitted), 
+            size = 1.2, color="#0072B2") +
+  geom_ribbon(data = pm_lub, mapping=aes(x = retrieval_time_months, y = .fitted, 
+                                         ymin=.lower, ymax=.upper), 
+              alpha=0.1, fill="#0072B2") +
+  theme_foundation() +
+  facet_grid(~location) +
+  labs(x="Month after burial", y="Viable seed reduction (%)") +
+  theme(strip.text = element_text(size=11,face="bold"))
 
 
 
-
-
-
-
-
+ggsave("figures/Lubbock.png", width = 5, height = 5)
+```
 
 
 
