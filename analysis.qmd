@@ -8,13 +8,9 @@ editor: source
 ```{r}
 library(tidyverse)
 library(readxl)
+library(drc)
 ```
 
-```{r}
-map(sheets, ~ readxl::read_excel("data/seed_burial_dt.xlsx", 
-                                 sheet = .x)) -> all_sheets
-names(all_sheets) <- sheets
-```
 
 
 ```{r}
@@ -87,6 +83,23 @@ dt1 %>%
 
 ```{r}
 data %>% 
+ group_by(species, location, depth_cm, field_rep, number_seeds_buried) %>% 
+ count() %>% 
+ mutate(retrieval_time_months = 0) %>% 
+ mutate(viable_seed_as_percent_of_original = 100) %>% 
+ dplyr::select(-n) -> at_zero
+```
+
+
+```{r}
+data %>% 
+  bind_rows(at_zero) -> data1
+```
+
+
+
+```{r}
+data1 %>% 
   ggplot(aes(x=retrieval_time_months, y=viable_seed_as_percent_of_original)) +
   geom_point() +
   facet_wrap(location ~ species)
@@ -96,6 +109,9 @@ ggsave("figures/raw_figure.png", width = 12, height = 7)
 
 
 
+```{r}
+
+```
 
 
 
