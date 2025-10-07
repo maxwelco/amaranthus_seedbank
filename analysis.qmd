@@ -268,7 +268,7 @@ tidy(lub_red2)
 
 
 ```{r}
-ED(lub_red2, c(10,50,90), interval = "delta")
+ED(lub_red2, c(10,50,90), interval = "delta", type = "absolute")
 ```
 
 
@@ -421,10 +421,13 @@ ggsave("figures/College Station.png", width = 5, height = 5)
 ```
 
 ```{r}
-ED(cs_red1, c(10,50,90), interval="delta")
+ED(cs_red1, c(10,50,90), interval="delta", type = "absolute")
 ```
 
-
+```{r}
+options(scipen = 999)
+EDcomp(cs_red1, c(10,10,50,50,90,90), type = "absolute")
+```
 
 
 ## Corpus Christi 
@@ -588,8 +591,38 @@ tidy(cc_red1)
 
 
 ```{r}
-ED(cc_red1, c(10,50,90), interval = "delta")
+ED(cc_red1, c(10,50,90), interval = "delta", type = "absolute")
 ```
+
+```{r}
+library(lmerTest)
+library(multcomp)
+```
+
+
+```{r}
+EDcomp(cc_red1, c(10,10,50,50,90,90), type = "absolute")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
