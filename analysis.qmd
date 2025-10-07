@@ -158,24 +158,9 @@ drm(viable_seed_as_percent_of_original ~ retrieval_time_months, fct = W1.3(),
 ```{r}
 #| warning: false 
 drm(viable_seed_as_percent_of_original ~ retrieval_time_months, fct = W1.3(),
-   curveid = species, data=lub_dt) -> lub_red2
+   curveid = species, data=lub_dt) -> lub_red1
 ```
 
-```{r}
-predict(lub_red2)
-```
-
-
-```{r}
-anova(lub_full, lub_red2)
-```
-
-
-```{r}
-#| warning: false 
-drm(viable_seed_as_percent_of_original ~ retrieval_time_months, fct = W1.3(),
-   data=lub_dt) -> lub_red1
-```
 
 
 ```{r}
@@ -184,17 +169,24 @@ anova(lub_full, lub_red1)
 
 
 ```{r}
+#| warning: false 
+drm(viable_seed_as_percent_of_original ~ retrieval_time_months, fct = W1.3(),
+   data=lub_dt) -> lub_red2
+```
+
+
+```{r}
+anova(lub_red1, lub_red2)
+```
+
+
+```{r}
 tidy(lub_full)
 ```
 
 ```{r}
-AIC(lub_full, lub_red2, lub_red1)
-rsme(lub_full, lub_red2, lub_red1)
+AIC(lub_full, lub_red1, lub_red2)
 ```
-```{r}
-plot(lub_full, type="all")
-```
-
 
 
 ```{r}
@@ -214,7 +206,7 @@ lub_dt %>%
 
 ```{r}
 # Add predictions to data
-lub_dt$predicted <- predict(lub_red2)
+lub_dt$predicted <- predict(lub_red1)
 
 # Then compute RMSE or ME per group
 lub_dt %>%
@@ -228,7 +220,7 @@ lub_dt %>%
 
 ```{r}
 # Add predictions to data
-lub_dt$predicted <- predict(lub_red1)
+lub_dt$predicted <- predict(lub_red2)
 
 # Then compute RMSE or ME per group
 lub_dt %>%
@@ -271,12 +263,12 @@ ggsave("figures/Lubbock.png", width = 5, height = 5)
 ```
 
 ```{r}
-tidy(lub_red1)
+tidy(lub_red2)
 ```
 
 
 ```{r}
-ED(lub_red1, c(10,50,90), interval = "delta")
+ED(lub_red2, c(10,50,90), interval = "delta")
 ```
 
 
@@ -306,6 +298,19 @@ drm(viable_seed_as_percent_of_original ~ retrieval_time_months, fct = W1.3(),
 anova(cs_full, cs_red1)
 ```
 
+```{r}
+#| warning: false 
+drm(viable_seed_as_percent_of_original ~ retrieval_time_months, fct = W1.3(),
+   data=cs_dt) -> cs_red2
+```
+
+
+```{r}
+anova(cs_red1, cs_red2)
+```
+
+
+
 
 ```{r}
 tidy(cs_red1)
@@ -314,6 +319,58 @@ tidy(cs_red1)
 ```{r}
 plot(cs_red1)
 ```
+
+```{r}
+AIC(cs_full, cs_red1, cs_red2)
+```
+
+
+```{r}
+# Add predictions to data
+cs_dt$predicted <- predict(cs_full)
+
+# Then compute RMSE or ME per group
+cs_dt %>%
+  group_by(species, depth_cm) %>%
+  summarise(
+    RMSE = sqrt(mean((viable_seed_as_percent_of_original - predicted)^2)),
+    ME = 1 - sum((viable_seed_as_percent_of_original - predicted)^2) /
+             sum((viable_seed_as_percent_of_original - mean(viable_seed_as_percent_of_original))^2)
+  )
+```
+
+
+```{r}
+# Add predictions to data
+cs_dt$predicted <- predict(cs_red1)
+
+# Then compute RMSE or ME per group
+cs_dt %>%
+  group_by(species) %>%
+  summarise(
+    RMSE = sqrt(mean((viable_seed_as_percent_of_original - predicted)^2)),
+    ME = 1 - sum((viable_seed_as_percent_of_original - predicted)^2) /
+             sum((viable_seed_as_percent_of_original - mean(viable_seed_as_percent_of_original))^2)
+  )
+```
+
+```{r}
+# Add predictions to data
+cs_dt$predicted <- predict(cs_red2)
+
+# Then compute RMSE or ME per group
+lub_dt %>%
+#  group_by(species) %>%
+  summarise(
+    RMSE = sqrt(mean((viable_seed_as_percent_of_original - predicted)^2)),
+    ME = 1 - sum((viable_seed_as_percent_of_original - predicted)^2) /
+             sum((viable_seed_as_percent_of_original - mean(viable_seed_as_percent_of_original))^2)
+  )
+```
+
+
+
+
 
 
 ```{r}
@@ -364,14 +421,8 @@ ggsave("figures/College Station.png", width = 5, height = 5)
 ```
 
 ```{r}
-tidy(lub_red1)
+ED(cs_red1, c(10,50,90), interval="delta")
 ```
-
-
-```{r}
-ED(lub_red1, c(10,50,90), interval = "delta")
-```
-
 
 
 
@@ -404,12 +455,87 @@ anova(cc_full, cc_red1)
 
 
 ```{r}
+#| warning: false 
+drm(viable_seed_as_percent_of_original ~ retrieval_time_months, fct = W1.3(),
+   data=cc_dt) -> cc_red2
+```
+
+
+```{r}
+anova(cc_red1, cc_red2)
+```
+
+
+
+
+
+
+
+
+
+```{r}
 tidy(cc_red1)
 ```
 
 ```{r}
 plot(cc_red1)
 ```
+
+```{r}
+library(MuMIn)
+```
+
+
+```{r}
+AIC(cc_full, cc_red1, cc_red2)
+AICc(cc_full, cc_red1, cc_red2)
+```
+
+
+```{r}
+# Add predictions to data
+cc_dt$predicted <- predict(cc_full)
+
+# Then compute RMSE or ME per group
+cc_dt %>%
+  group_by(species, depth_cm) %>%
+  summarise(
+    RMSE = sqrt(mean((viable_seed_as_percent_of_original - predicted)^2)),
+    ME = 1 - sum((viable_seed_as_percent_of_original - predicted)^2) /
+             sum((viable_seed_as_percent_of_original - mean(viable_seed_as_percent_of_original))^2)
+  )
+```
+
+
+```{r}
+# Add predictions to data
+cc_dt$predicted <- predict(cc_red1)
+
+# Then compute RMSE or ME per group
+cc_dt %>%
+  group_by(species) %>%
+  summarise(
+    RMSE = sqrt(mean((viable_seed_as_percent_of_original - predicted)^2)),
+    ME = 1 - sum((viable_seed_as_percent_of_original - predicted)^2) /
+             sum((viable_seed_as_percent_of_original - mean(viable_seed_as_percent_of_original))^2)
+  )
+```
+
+```{r}
+# Add predictions to data
+cc_dt$predicted <- predict(cc_red2)
+
+# Then compute RMSE or ME per group
+cc_dt %>%
+#  group_by(species) %>%
+  summarise(
+    RMSE = sqrt(mean((viable_seed_as_percent_of_original - predicted)^2)),
+    ME = 1 - sum((viable_seed_as_percent_of_original - predicted)^2) /
+             sum((viable_seed_as_percent_of_original - mean(viable_seed_as_percent_of_original))^2)
+  )
+```
+
+
 
 
 ```{r}
