@@ -102,9 +102,11 @@ data %>%
 
 ```{r}
 data1 %>% 
-  ggplot(aes(x=retrieval_time_months, y=viable_seed_as_percent_of_original)) +
+#  filter(retrieval_time_months < 13) %>% 
+  ggplot(aes(x=retrieval_time_months, y=total_seed_loss, color=as_factor(depth_cm))) +
   geom_point() +
-  facet_wrap(location ~ species)
+  geom_smooth() +
+  facet_wrap(location ~ species) 
 
 ggsave("figures/raw_figure.png", width = 12, height = 7)
 ```
@@ -568,17 +570,23 @@ cc_dt %>%
   geom_ribbon(data = pm_cc, mapping=aes(x = retrieval_time_months, y = .fitted, 
                                          ymin=.lower, ymax=.upper, fill=species), 
               alpha=0.1) +
-  geom_jitter(aes(color=species), alpha=0.1) +
+  geom_jitter(aes(color=species), alpha=0.1, show.legend = FALSE) +
+  geom_point(data = pm_cc %>% 
+               mutate(retrieval_time_months = round(retrieval_time_months,0)) %>% 
+               filter(retrieval_time_months %in% c(0,6,12,24,36,48,60)), 
+             mapping= aes(x = retrieval_time_months, y = .fitted, color=species)) +
   theme_foundation() +
   scale_color_colorblind() +
   scale_fill_colorblind() +
   facet_grid(~location) +
   labs(x="Month after burial", 
-       y="Viable seed reduction (%)",
+       y="Viable seeds (%)",
        color="", fill="") +
   scale_x_continuous(breaks = c(0, 12, 24, 36, 48, 60)) +
-  theme(strip.text = element_text(size=11,face="bold"),
-        legend.position = "bottom")
+  theme(legend.background = element_blank(),
+        strip.text = element_text(size = 11, face = "bold"),
+        legend.position = c(0.82,0.95)) +
+  guides(fill = "none") -> fig_cc_1
 
 
 
@@ -591,8 +599,56 @@ tidy(cc_red1)
 
 
 ```{r}
-ED(cc_red1, c(10,50,90), interval = "delta", type = "absolute")
+ED(cc_red1, c(1, 10,50,90, 99), interval = "delta", type = "absolute") %>% 
+  as_tibble() %>% 
+  mutate(ed = as_factor(c(1, 10, 50, 90, 99, 1, 10, 50, 90, 99))) %>% 
+  mutate(species = rep(c("Palmer amaranth", "waterhemp"), each = 5)) %>% 
+  janitor::clean_names() %>% 
+  mutate(location = "Corpus Christi") %>% 
+  mutate_if(is.double, ~round(.,1)) %>% 
+  ggplot(aes(y=ed, x=estimate, color = species, fill = species, label = estimate)) +
+  geom_point(position = position_dodge2(width = 0.7)) +
+  geom_linerange(aes(xmin=lower, xmax = upper), position = position_dodge2(width = 0.7), 
+                 size = 1.2) +
+  geom_text(position = position_dodge2(width = 0.7), 
+            vjust = 1.7, size = 3, show.legend = FALSE) +
+  scale_color_colorblind() +
+  scale_fill_colorblind() +
+  facet_grid(~location) +
+  scale_x_continuous(limits=c(0,130), breaks = seq(0,125, by=25)) + 
+  theme_foundation() +
+  labs(x="Estimated month after burial", 
+       y="Viable seeds (%)",
+       color="", fill="", label = "") +
+  theme(legend.background = element_blank(),
+        strip.text = element_text(size = 11, face = "bold"),
+        legend.position = "none"
+        ) +
+  guides(fill = "none") -> fig_cc_2
+
+ggsave("figures/ED Corpus Christi.png", width = 5, height = 5)
 ```
+
+```{r}
+library(patchwork)
+```
+
+
+```{r}
+
+(fig_cc_1 + fig_cc_2) + 
+  plot_layout(guides = "collect") & 
+  theme(legend.position = "bottom")  &
+  plot_annotation(tag_levels = 'A')
+
+
+
+ggsave("figures/Combined Corpus Christi.png", width = 10, height = 5)
+```
+
+
+
+
 
 ```{r}
 library(lmerTest)
@@ -603,6 +659,7 @@ library(multcomp)
 ```{r}
 EDcomp(cc_red1, c(10,10,50,50,90,90), type = "absolute")
 ```
+
 
 
 
