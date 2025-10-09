@@ -249,6 +249,10 @@ broom:::augment.drc(lub_red1, newdata=newdata, conf.int = TRUE) -> pm_lub
 lub_dt %>% 
   ggplot(aes(x=retrieval_time_months, y=viable_seed_as_percent_of_original)) +
   geom_jitter(alpha = 0.1, color="#0072B2") +
+  geom_point(data = pm_lub %>% 
+               mutate(retrieval_time_months = round(retrieval_time_months,0)) %>% 
+               filter(retrieval_time_months %in% c(0,6,12,24,36,48,60)), 
+             mapping= aes(x = retrieval_time_months, y = .fitted), color="#0072B2") +
   geom_line(data = pm_lub, aes(x = retrieval_time_months, y = .fitted), 
             size = 1.2, color="#0072B2") +
   geom_ribbon(data = pm_lub, mapping=aes(x = retrieval_time_months, y = .fitted, 
@@ -257,7 +261,12 @@ lub_dt %>%
   theme_foundation() +
   facet_grid(~location) +
   labs(x="Month after burial", y="Viable seed reduction (%)") +
-  theme(strip.text = element_text(size=11,face="bold"))
+    theme(legend.background = element_blank(),
+        legend.box = element_blank(),
+        legend.key = element_blank(),
+        strip.text = element_text(size = 11, face = "bold"),
+        legend.position = c(0.82,0.95)) +
+  guides(fill = "none") -> fig_lub_1
 
 
 
@@ -270,8 +279,50 @@ tidy(lub_red2)
 
 
 ```{r}
+ED(lub_red2, c(1, 10,50,90, 99), interval = "delta", type = "absolute") %>% 
+  as_tibble() %>% 
+  mutate(ed = as_factor(c(1, 10, 50, 90, 99))) %>% 
+  janitor::clean_names() %>% 
+  mutate(location = "Lubbock") %>% 
+  mutate_if(is.double, ~round(.,1)) %>% 
+  ggplot(aes(y=ed, x=estimate, label = estimate)) +
+  geom_point(position = position_dodge2(width = 0.7), color="#0072B2") +
+  geom_linerange(aes(xmin=lower, xmax = upper), position = position_dodge2(width = 0.7), 
+                 size = 1.2, color="#0072B2") +
+  geom_text(position = position_dodge2(width = 0.7), 
+            vjust = 1.7, size = 3, show.legend = FALSE, color="#0072B2") +
+  facet_grid(~location) +
+  scale_x_continuous(limits=c(0,20), breaks = seq(0,20, by=5)) + 
+  theme_foundation() +
+  labs(x="Estimated month after burial", 
+       y="Viable seeds (%)",
+       color="", fill="", label = "") +
+  theme(legend.background = element_blank(),
+        strip.text = element_text(size = 11, face = "bold"),
+        legend.position = "none") -> fig_lub_2
+
+ggsave("figures/ED Lubbock.png", width = 5, height = 5)
+```
+
+```{r}
+(fig_lub_1 + fig_lub_2) + 
+  plot_annotation(tag_levels = 'A')
+
+
+
+ggsave("figures/Combined Lubbock.png", width = 10, height = 5)
+```
+
+
+```{r}
 ED(lub_red2, c(10,50,90), interval = "delta", type = "absolute")
 ```
+
+
+
+
+
+
 
 
 ## College Station 
@@ -406,6 +457,10 @@ cs_dt %>%
                                          ymin=.lower, ymax=.upper, fill=species), 
               alpha=0.1) +
   geom_jitter(aes(color=species), alpha=0.1) +
+  geom_point(data = pm_cs %>% 
+               mutate(retrieval_time_months = round(retrieval_time_months,0)) %>% 
+               filter(retrieval_time_months %in% c(0,6,12,24,36,48,60)), 
+             mapping= aes(x = retrieval_time_months, y = .fitted, color=species)) +
   theme_foundation() +
   scale_color_colorblind() +
   scale_fill_colorblind() +
@@ -414,8 +469,12 @@ cs_dt %>%
        y="Viable seed reduction (%)",
        color="", fill="") +
   scale_x_continuous(breaks = c(0, 12, 24, 36, 48, 60)) +
-  theme(strip.text = element_text(size=11,face="bold"),
-        legend.position = "bottom")
+  theme(legend.background = element_blank(),
+        legend.box = element_blank(),
+        legend.key = element_blank(),
+        strip.text = element_text(size = 11, face = "bold"),
+        legend.position = c(0.82,0.95)) +
+  guides(fill = "none")  -> fig_cs_1
 
 
 
@@ -425,6 +484,62 @@ ggsave("figures/College Station.png", width = 5, height = 5)
 ```{r}
 ED(cs_red1, c(10,50,90), interval="delta", type = "absolute")
 ```
+
+
+```{r}
+ED(cs_red1, c(1, 10,50,90, 99), interval = "delta", type = "absolute") %>% 
+  as_tibble() %>% 
+  mutate(ed = as_factor(c(1, 10, 50, 90, 99, 1, 10, 50, 90, 99))) %>% 
+  mutate(species = rep(c("Palmer amaranth", "waterhemp"), each = 5)) %>% 
+  janitor::clean_names() %>% 
+  mutate(location = "College Station") %>% 
+  mutate_if(is.double, ~round(.,1)) %>% 
+  ggplot(aes(y=ed, x=estimate, color = species, fill = species, label = estimate)) +
+  geom_point(position = position_dodge2(width = 0.7)) +
+  geom_linerange(aes(xmin=lower, xmax = upper), position = position_dodge2(width = 0.7), 
+                 size = 1.2) +
+  geom_text(position = position_dodge2(width = 0.7), 
+            vjust = 1.7, size = 3, show.legend = FALSE) +
+  scale_color_colorblind() +
+  scale_fill_colorblind() +
+  facet_grid(~location) +
+  scale_x_continuous(limits=c(0,20), breaks = seq(0,20, by=5)) + 
+  theme_foundation() +
+  labs(x="Estimated month after burial", 
+       y="Viable seeds (%)",
+       color="", fill="", label = "") +
+  theme(legend.background = element_blank(),
+        strip.text = element_text(size = 11, face = "bold"),
+        legend.position = "none") -> fig_cs_2
+
+ggsave("figures/ED College Station.png", width = 5, height = 5)
+```
+
+
+
+
+```{r}
+(fig_cs_1 + fig_cs_2) + 
+  plot_annotation(tag_levels = 'A')
+
+
+
+ggsave("figures/Combined College Station.png", width = 10, height = 5)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ```{r}
 options(scipen = 999)
@@ -584,6 +699,8 @@ cc_dt %>%
        color="", fill="") +
   scale_x_continuous(breaks = c(0, 12, 24, 36, 48, 60)) +
   theme(legend.background = element_blank(),
+        legend.box = element_blank(),
+        legend.key = element_blank(),
         strip.text = element_text(size = 11, face = "bold"),
         legend.position = c(0.82,0.95)) +
   guides(fill = "none") -> fig_cc_1
@@ -637,8 +754,6 @@ library(patchwork)
 ```{r}
 
 (fig_cc_1 + fig_cc_2) + 
-  plot_layout(guides = "collect") & 
-  theme(legend.position = "bottom")  &
   plot_annotation(tag_levels = 'A')
 
 
