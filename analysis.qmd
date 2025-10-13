@@ -750,26 +750,11 @@ ED(cc_red1, c(1, 10,50,90, 99), interval = "delta", type = "absolute") %>%
 
 ```{r}
 fig_cc_2 +
-  annotate("segment", x = 128, xend = 128, y = 0.8, yend = 1.2,
+  annotate("segment", x = c(128, 34, 11, 8, 5), xend = c(128, 34, 11, 8,5), 
+           y = c(0.8,1.8,2.8,3.8,4.8), yend = c(1.2,2.2,3.2, 4.4, 5.2),
            color="red", linetype= "dotted") +
-  annotate("text", x = 129,  y = 1, 
-           color="#333333", label = "P < 0.00", hjust=0, size = 3) +
-  annotate("segment", x = 34, xend = 34, y = 1.8, yend = 2.2,
-           color="red", linetype= "dotted") +
-  annotate("text", x = 36,  y = 2, 
-           color="#333333", label = "P < 0.00", hjust=0, size = 3) +
-  annotate("segment", x = 11, xend = 11, y = 2.8, yend = 3.2,
-           color="red", linetype= "dotted") +
-  annotate("text", x = 13,  y = 3, 
-           color="#333333", label = "P = 0.00", hjust=0, size = 3) +
-  annotate("segment", x = 8, xend = 8, y = 3.8, yend = 4.2,
-           color="red", linetype= "dotted") +
-  annotate("text", x = 10,  y = 4, 
-           color="#333333", label = "P = 0.04", hjust=0, size = 3) +
-  annotate("segment", x = 5, xend = 5, y = 4.8, yend = 5.2,
-           color="red", linetype= "dotted") +
-  annotate("text", x = 7,  y = 5, 
-           color="#333333", label = "P = 0.22", hjust=0, size = 3) -> fig_cc_2_1
+  annotate("text", x = c(129, 36, 13, 10, 7),  y = c(1,2,3,4,5),
+           color="#333333", label = "P < 0.00", hjust=0, size = 3) -> fig_cc_2_1
 ```
 
 
