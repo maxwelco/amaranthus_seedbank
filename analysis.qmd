@@ -710,6 +710,9 @@ cc_dt %>%
 ggsave("figures/Corpus Christi.png", width = 5, height = 5)
 ```
 
+
+
+
 ```{r}
 tidy(cc_red1)
 ```
@@ -732,7 +735,7 @@ ED(cc_red1, c(1, 10,50,90, 99), interval = "delta", type = "absolute") %>%
   scale_color_colorblind() +
   scale_fill_colorblind() +
   facet_grid(~location) +
-  scale_x_continuous(limits=c(0,130), breaks = seq(0,125, by=25)) + 
+  scale_x_continuous(limits=c(0,140), breaks = seq(0,125, by=25)) + 
   theme_foundation() +
   labs(x="Estimated month after burial", 
        y="Viable seeds (%)",
@@ -740,8 +743,43 @@ ED(cc_red1, c(1, 10,50,90, 99), interval = "delta", type = "absolute") %>%
   theme(legend.background = element_blank(),
         strip.text = element_text(size = 11, face = "bold"),
         legend.position = "none"
-        ) +
+        ) + 
   guides(fill = "none") -> fig_cc_2
+```
+
+
+```{r}
+fig_cc_2 +
+  annotate("segment", x = 128, xend = 128, y = 0.8, yend = 1.2,
+           color="red", linetype= "dotted") +
+  annotate("text", x = 129,  y = 1, 
+           color="#333333", label = "P < 0.00", hjust=0, size = 3) +
+  annotate("segment", x = 34, xend = 34, y = 1.8, yend = 2.2,
+           color="red", linetype= "dotted") +
+  annotate("text", x = 36,  y = 2, 
+           color="#333333", label = "P < 0.00", hjust=0, size = 3) +
+  annotate("segment", x = 11, xend = 11, y = 2.8, yend = 3.2,
+           color="red", linetype= "dotted") +
+  annotate("text", x = 13,  y = 3, 
+           color="#333333", label = "P = 0.00", hjust=0, size = 3) +
+  annotate("segment", x = 8, xend = 8, y = 3.8, yend = 4.2,
+           color="red", linetype= "dotted") +
+  annotate("text", x = 10,  y = 4, 
+           color="#333333", label = "P = 0.04", hjust=0, size = 3) +
+  annotate("segment", x = 5, xend = 5, y = 4.8, yend = 5.2,
+           color="red", linetype= "dotted") +
+  annotate("text", x = 7,  y = 5, 
+           color="#333333", label = "P = 0.22", hjust=0, size = 3) -> fig_cc_2_1
+```
+
+
+```{r}
+EDcomp(cc_red1, c(99, 99), type = "absolute")
+```
+
+
+```{r}
+
 
 ggsave("figures/ED Corpus Christi.png", width = 5, height = 5)
 ```
@@ -753,7 +791,7 @@ library(patchwork)
 
 ```{r}
 
-(fig_cc_1 + fig_cc_2) + 
+(fig_cc_1 + fig_cc_2_1) + 
   plot_annotation(tag_levels = 'A')
 
 
@@ -770,11 +808,36 @@ library(lmerTest)
 library(multcomp)
 ```
 
-
 ```{r}
-EDcomp(cc_red1, c(10,10,50,50,90,90), type = "absolute")
+library(emmeans)
+```
+```{r}
+library(drc)
 ```
 
+
+
+
+
+
+```{r}
+EDcomp(cc_red1, c(50, 50),  type = "absolute") -> ed_test
+```
+
+```{r}
+qdrg(object = cc_red1, data = cc_dt)
+```
+
+
+```{r}
+# If $contr exists, proceed:
+if (!is.null(ed_test$contr)) {
+  gh <- glht(mod, linfct = ed_test$contr)
+  cld(gh)
+} else {
+  cat("No contrast matrix found in EDcomp output.\n")
+}
+```
 
 
 
