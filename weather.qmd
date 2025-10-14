@@ -1,0 +1,30 @@
+---
+title: "Weather"
+format: html
+editor: source
+---
+
+```{r}
+library(lubridate)
+library(daymetr)
+```
+
+```{r}
+download_daymet(site = "College Station Farm",
+                lat = 30.537130,
+                lon = -96.425917,
+                start = 2016,
+                end = 2020,
+                internal = TRUE) -> w_cs
+```
+
+
+
+```{r}
+w_cs$data %>% 
+  janitor::clean_names() %>% 
+  mutate(date = ymd(paste(year, "01", "01", sep = "-")) + days(yday - 1)) %>% 
+  ggplot(aes(x = date, y = prcp_mm_day)) +
+  geom_col()
+```
+

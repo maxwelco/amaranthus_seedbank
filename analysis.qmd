@@ -11,6 +11,7 @@ library(readxl)
 library(drc)
 library(ggthemes)
 library(broom)
+library(patchwork)
 ```
 
 
@@ -248,11 +249,12 @@ broom:::augment.drc(lub_red1, newdata=newdata, conf.int = TRUE) -> pm_lub
 ```{r}
 lub_dt %>% 
   ggplot(aes(x=retrieval_time_months, y=viable_seed_as_percent_of_original)) +
-  geom_jitter(alpha = 0.1, color="#0072B2") +
+  geom_jitter(alpha = 0.1, color="#0072B2", pch = 15, size = 4) +
   geom_point(data = pm_lub %>% 
                mutate(retrieval_time_months = round(retrieval_time_months,0)) %>% 
                filter(retrieval_time_months %in% c(0,6,12,24,36,48,60)), 
-             mapping= aes(x = retrieval_time_months, y = .fitted), color="#0072B2") +
+             mapping= aes(x = retrieval_time_months, y = .fitted), 
+             color="#0072B2", pch = 15, size = 4) +
   geom_line(data = pm_lub, aes(x = retrieval_time_months, y = .fitted), 
             size = 1.2, color="#0072B2") +
   geom_ribbon(data = pm_lub, mapping=aes(x = retrieval_time_months, y = .fitted, 
@@ -260,12 +262,16 @@ lub_dt %>%
               alpha=0.1, fill="#0072B2") +
   theme_foundation() +
   facet_grid(~location) +
-  labs(x="Month after burial", y="Viable seed reduction (%)") +
-    theme(legend.background = element_blank(),
+  labs(x="Month after burial", y="Viable seeds (%)") +
+  scale_x_continuous(breaks = c(0, 12, 24, 36, 48, 60)) +
+  scale_y_continuous(limits = c(0,105), 
+                     breaks = c(0, 25, 50, 75, 100)) +
+  theme(legend.background = element_blank(),
         legend.box = element_blank(),
         legend.key = element_blank(),
-        strip.text = element_text(size = 11, face = "bold"),
-        legend.position = c(0.82,0.95)) +
+        axis.title =  element_markdown(size=12),
+        axis.text = element_text(size=12),
+        strip.text = element_text(size = 12, face = "bold")) +
   guides(fill = "none") -> fig_lub_1
 
 
@@ -285,32 +291,51 @@ ED(lub_red2, c(1, 10,50,90, 99), interval = "delta", type = "absolute") %>%
   janitor::clean_names() %>% 
   mutate(location = "Lubbock") %>% 
   mutate_if(is.double, ~round(.,1)) %>% 
+  mutate(ed = case_when(
+    ed == "1" ~ "RM~1~",
+    ed == "10" ~ "RM~10~",
+    ed == "50" ~ "RM~50~",
+    ed == "90" ~ "RM~90~",
+    ed == "99" ~ "RM~99~",
+    TRUE ~ NA
+  )) -> lub_final
+```
+
+
+```{r}
+lub_final %>% 
   ggplot(aes(y=ed, x=estimate, label = estimate)) +
-  geom_point(position = position_dodge2(width = 0.7), color="#0072B2") +
+  geom_point(position = position_dodge2(width = 0.7), color="#0072B2", pch = 15, size = 4) +
   geom_linerange(aes(xmin=lower, xmax = upper), position = position_dodge2(width = 0.7), 
                  size = 1.2, color="#0072B2") +
   geom_text(position = position_dodge2(width = 0.7), 
-            vjust = 1.7, size = 3, show.legend = FALSE, color="#0072B2") +
+            vjust = 2.2, size = 4, show.legend = FALSE, color="#0072B2") +
   facet_grid(~location) +
   scale_x_continuous(limits=c(0,20), breaks = seq(0,20, by=5)) + 
   theme_foundation() +
-  labs(x="Estimated month after burial", 
-       y="Viable seeds (%)",
+  labs(x= "Estimated month after burial", 
+       y= "",
        color="", fill="", label = "") +
   theme(legend.background = element_blank(),
-        strip.text = element_text(size = 11, face = "bold"),
-        legend.position = "none") -> fig_lub_2
+        strip.text = element_text(size = 12, face = "bold"),
+        axis.title =  element_markdown(size=12),
+        legend.position = "none",
+        axis.text.y = element_markdown(size=12),
+        axis.text = element_text(size=12)
+        ) + 
+  guides(fill = "none") -> fig_lub_2
 
-ggsave("figures/ED Lubbock.png", width = 5, height = 5)
+#ggsave("figures/ED Lubbock.png", width = 5, height = 5)
 ```
 
+
 ```{r}
-(fig_lub_1 + fig_lub_2) + 
+(fig_lub_1 / fig_lub_2) + 
   plot_annotation(tag_levels = 'A')
 
 
 
-ggsave("figures/Combined Lubbock.png", width = 10, height = 5)
+ggsave("figures/Combined Lubbock.png", width = 5, height = 10)
 ```
 
 
@@ -448,35 +473,39 @@ cs_dt$retrieval_time_months0[cs_dt$retrieval_time_months0==0] <- 0.1
 ```{r}
 cs_dt %>% 
   ggplot(aes(x=retrieval_time_months0, 
-             y=viable_seed_as_percent_of_original)) +
-#  coord_trans(x= "log") +
+             y=viable_seed_as_percent_of_original, pch = species)) +
   geom_line(data = pm_cs, aes(x = retrieval_time_months, y = .fitted, 
-                              color=species),
+                              color=species, shape = species),
             size = 1.2) +
   geom_ribbon(data = pm_cs, mapping=aes(x = retrieval_time_months, y = .fitted, 
                                          ymin=.lower, ymax=.upper, fill=species), 
               alpha=0.1) +
-  geom_jitter(aes(color=species), alpha=0.1) +
+  geom_jitter(aes(color=species, shape = species), alpha=0.1, size = 4) +
   geom_point(data = pm_cs %>% 
                mutate(retrieval_time_months = round(retrieval_time_months,0)) %>% 
                filter(retrieval_time_months %in% c(0,6,12,24,36,48,60)), 
-             mapping= aes(x = retrieval_time_months, y = .fitted, color=species)) +
+             mapping= aes(x = retrieval_time_months, y = .fitted, 
+                          color=species, 
+                          shape = species), size = 4) +
   theme_foundation() +
   scale_color_colorblind() +
   scale_fill_colorblind() +
   facet_grid(~location) +
+  scale_shape_manual(values = c(16, 18)) +
   labs(x="Month after burial", 
-       y="Viable seed reduction (%)",
-       color="", fill="") +
+       y="Viable seeds (%)") +
   scale_x_continuous(breaks = c(0, 12, 24, 36, 48, 60)) +
+  scale_y_continuous(limits = c(0,105), 
+                     breaks = c(0, 25, 50, 75, 100)) +
   theme(legend.background = element_blank(),
+        legend.title = element_blank(),
         legend.box = element_blank(),
         legend.key = element_blank(),
-        strip.text = element_text(size = 11, face = "bold"),
-        legend.position = c(0.82,0.95)) +
+        axis.title =  element_markdown(size=12),
+        axis.text = element_text(size=12),
+        strip.text = element_text(size = 12, face = "bold"),
+        legend.position = c(0.78,0.91)) +
   guides(fill = "none")  -> fig_cs_1
-
-
 
 ggsave("figures/College Station.png", width = 5, height = 5)
 ```
@@ -484,7 +513,6 @@ ggsave("figures/College Station.png", width = 5, height = 5)
 ```{r}
 ED(cs_red1, c(10,50,90), interval="delta", type = "absolute")
 ```
-
 
 ```{r}
 ED(cs_red1, c(1, 10,50,90, 99), interval = "delta", type = "absolute") %>% 
@@ -494,37 +522,75 @@ ED(cs_red1, c(1, 10,50,90, 99), interval = "delta", type = "absolute") %>%
   janitor::clean_names() %>% 
   mutate(location = "College Station") %>% 
   mutate_if(is.double, ~round(.,1)) %>% 
-  ggplot(aes(y=ed, x=estimate, color = species, fill = species, label = estimate)) +
-  geom_point(position = position_dodge2(width = 0.7)) +
-  geom_linerange(aes(xmin=lower, xmax = upper), position = position_dodge2(width = 0.7), 
+  mutate(ed = case_when(
+    ed == "1" ~ "RM~1~",
+    ed == "10" ~ "RM~10~",
+    ed == "50" ~ "RM~50~",
+    ed == "90" ~ "RM~90~",
+    ed == "99" ~ "RM~99~",
+    TRUE ~ NA
+  )) -> cs_final
+```
+
+
+```{r}
+cs_final %>% 
+  ggplot(aes(y=ed, x=estimate, color = species, 
+             fill = species, 
+             label = estimate,
+             shape = species)) +
+  geom_point(position = position_dodge2(width = 0.9), size = 4) +
+  geom_linerange(aes(xmin=lower, xmax = upper), position = position_dodge2(width = 0.9), 
                  size = 1.2) +
-  geom_text(position = position_dodge2(width = 0.7), 
-            vjust = 1.7, size = 3, show.legend = FALSE) +
+  geom_text(position = position_dodge2(width = 0.9), 
+            vjust = 2.2, size = 4, show.legend = FALSE) +
   scale_color_colorblind() +
   scale_fill_colorblind() +
   facet_grid(~location) +
-  scale_x_continuous(limits=c(0,20), breaks = seq(0,20, by=5)) + 
+  scale_x_continuous(limits=c(0,21), breaks = seq(0,20, by=5)) + 
   theme_foundation() +
   labs(x="Estimated month after burial", 
-       y="Viable seeds (%)",
+       y="",
        color="", fill="", label = "") +
   theme(legend.background = element_blank(),
-        strip.text = element_text(size = 11, face = "bold"),
-        legend.position = "none") -> fig_cs_2
+        strip.text = element_text(size = 12, face = "bold"),
+        axis.title =  element_markdown(size=12),
+        legend.position = "none",
+        axis.text.y = element_markdown(size=12),
+        axis.text = element_text(size=12)
+        ) + 
+  guides(fill = "none") -> fig_cs_2
+```
+
+
+```{r}
+fig_cs_2 +
+  annotate("segment", x = c(17.5, 12.5, 8.5, 5.3, 3), xend = c(17.5, 12.5, 8.5, 5.3, 3), 
+           y = c(0.8, 1.8, 2.8, 3.8, 4.8), yend = c(1.2, 2.2, 3.2, 4.2, 5.2),
+           color="purple", linetype= "dashed") +
+  annotate("text", x = c(18, 13, 9, 5.8, 3.5),  y = c(1,2,3,4,5),
+           color="#333333", 
+           label = c("P = 0.69", "P = 0.51", "P < 0.00", "P < 0.00", "P < 0.00"), 
+           hjust=0, size = 4) -> fig_cs_2_1
 
 ggsave("figures/ED College Station.png", width = 5, height = 5)
+```
+
+
+```{r}
+EDcomp(cs_red1, c(1, 1))
 ```
 
 
 
 
 ```{r}
-(fig_cs_1 + fig_cs_2) + 
+(fig_cs_1 / fig_cs_2_1) + 
   plot_annotation(tag_levels = 'A')
 
 
 
-ggsave("figures/Combined College Station.png", width = 10, height = 5)
+ggsave("figures/Combined College Station.png", width = 5, height = 10)
 ```
 
 
@@ -677,37 +743,43 @@ broom:::augment.drc(cc_red1, newdata=nd, conf.int = TRUE) -> pm_cc
 ```{r}
 cc_dt %>% 
   ggplot(aes(x=retrieval_time_months, 
-             y=viable_seed_as_percent_of_original)) +
-#  coord_trans(x= "log") +
+             y=viable_seed_as_percent_of_original, shape = species)) +
   geom_line(data = pm_cc, aes(x = retrieval_time_months, y = .fitted, 
                               color=species),
             size = 1.2) +
   geom_ribbon(data = pm_cc, mapping=aes(x = retrieval_time_months, y = .fitted, 
                                          ymin=.lower, ymax=.upper, fill=species), 
               alpha=0.1) +
-  geom_jitter(aes(color=species), alpha=0.1, show.legend = FALSE) +
+  geom_jitter(aes(color=species, shape = species), alpha=0.1, size = 4, show.legend = FALSE) +
   geom_point(data = pm_cc %>% 
                mutate(retrieval_time_months = round(retrieval_time_months,0)) %>% 
                filter(retrieval_time_months %in% c(0,6,12,24,36,48,60)), 
-             mapping= aes(x = retrieval_time_months, y = .fitted, color=species)) +
+             mapping= aes(x = retrieval_time_months, 
+                          y = .fitted, 
+                          color=species, 
+                          shape = species), size = 4) +
   theme_foundation() +
   scale_color_colorblind() +
   scale_fill_colorblind() +
   facet_grid(~location) +
+  scale_shape_manual(values = c(16, 18)) +
   labs(x="Month after burial", 
-       y="Viable seeds (%)",
-       color="", fill="") +
+       y="Viable seeds (%)") +
   scale_x_continuous(breaks = c(0, 12, 24, 36, 48, 60)) +
+  scale_y_continuous(limits = c(0,105), 
+                     breaks = c(0, 25, 50, 75, 100)) +
   theme(legend.background = element_blank(),
+        legend.title = element_blank(),
         legend.box = element_blank(),
         legend.key = element_blank(),
-        strip.text = element_text(size = 11, face = "bold"),
-        legend.position = c(0.82,0.95)) +
+        axis.title =  element_markdown(size=12),
+        axis.text = element_text(size=12),
+        strip.text = element_text(size = 12, face = "bold"),
+        legend.position = c(0.78,0.91)) +
   guides(fill = "none") -> fig_cc_1
 
 
-
-ggsave("figures/Corpus Christi.png", width = 5, height = 5)
+#ggsave("figures/Corpus Christi.png", width = 5, height = 5)
 ```
 
 
@@ -726,23 +798,47 @@ ED(cc_red1, c(1, 10,50,90, 99), interval = "delta", type = "absolute") %>%
   janitor::clean_names() %>% 
   mutate(location = "Corpus Christi") %>% 
   mutate_if(is.double, ~round(.,1)) %>% 
-  ggplot(aes(y=ed, x=estimate, color = species, fill = species, label = estimate)) +
-  geom_point(position = position_dodge2(width = 0.7)) +
-  geom_linerange(aes(xmin=lower, xmax = upper), position = position_dodge2(width = 0.7), 
+  mutate(ed = case_when(
+    ed == "1" ~ "V~1~",
+    ed == "10" ~ "V~10~",
+    ed == "50" ~ "V~50~",
+    ed == "90" ~ "V~90~",
+    ed == "99" ~ "V~99~",
+    TRUE ~ NA
+  )) -> cc_final
+```
+
+
+
+
+
+
+
+```{r}
+cc_final %>% 
+  ggplot(aes(y=ed, x=estimate, color = species, 
+             fill = species, 
+             shape = species,
+             label = estimate)) +
+  geom_point(position = position_dodge2(width = 0.9), size=4) +
+  geom_linerange(aes(xmin=lower, xmax = upper), position = position_dodge2(width = 0.9), 
                  size = 1.2) +
-  geom_text(position = position_dodge2(width = 0.7), 
-            vjust = 1.7, size = 3, show.legend = FALSE) +
+  geom_text(position = position_dodge2(width = 0.9), 
+            vjust = 2.2, size = 4, show.legend = FALSE) +
   scale_color_colorblind() +
   scale_fill_colorblind() +
   facet_grid(~location) +
-  scale_x_continuous(limits=c(0,140), breaks = seq(0,125, by=25)) + 
+  scale_x_continuous(limits=c(0,130), breaks = seq(0,125, by=25)) + 
   theme_foundation() +
   labs(x="Estimated month after burial", 
-       y="Viable seeds (%)",
+       y="",
        color="", fill="", label = "") +
   theme(legend.background = element_blank(),
-        strip.text = element_text(size = 11, face = "bold"),
-        legend.position = "none"
+        strip.text = element_text(size = 12, face = "bold"),
+        axis.title =  element_markdown(size=12),
+        legend.position = "none",
+        axis.text.y = element_markdown(size=12),
+        axis.text = element_text(size=12)
         ) + 
   guides(fill = "none") -> fig_cc_2
 ```
@@ -750,38 +846,33 @@ ED(cc_red1, c(1, 10,50,90, 99), interval = "delta", type = "absolute") %>%
 
 ```{r}
 fig_cc_2 +
-  annotate("segment", x = c(128, 34, 11, 8, 5), xend = c(128, 34, 11, 8,5), 
-           y = c(0.8,1.8,2.8,3.8,4.8), yend = c(1.2,2.2,3.2, 4.4, 5.2),
-           color="red", linetype= "dotted") +
-  annotate("text", x = c(129, 36, 13, 10, 7),  y = c(1,2,3,4,5),
-           color="#333333", label = "P < 0.00", hjust=0, size = 3) -> fig_cc_2_1
+  annotate("segment", x = c(30, 36, 13, 10, 7), xend = c(30, 36, 13, 10, 7), 
+           y = c(0.8, 1.8, 2.8, 3.8, 4.8), yend = c(1.2, 2.2, 3.2, 4.2, 5.2),
+           color="purple", linetype= "dashed") +
+  annotate("text", x = c(33, 38, 15, 12, 9),  y = c(1,2,3,4,5),
+           color="#333333", 
+           label = c("P < 0.00", "P < 0.00", "P = 0.00", "P = 0.04", "P = 0.22"), 
+           hjust=0, size = 4) -> fig_cc_2_1
+
+#ggsave("figures/ED Corpus Christi.png", width = 5, height = 5)
 ```
 
 
 ```{r}
-EDcomp(cc_red1, c(99, 99), type = "absolute")
+EDcomp(cc_red1, c(1, 1), type = "absolute")
 ```
 
 
-```{r}
 
-
-ggsave("figures/ED Corpus Christi.png", width = 5, height = 5)
-```
-
-```{r}
-library(patchwork)
-```
 
 
 ```{r}
-
-(fig_cc_1 + fig_cc_2_1) + 
+(fig_cc_1 / fig_cc_2_1) + 
   plot_annotation(tag_levels = 'A')
 
 
 
-ggsave("figures/Combined Corpus Christi.png", width = 10, height = 5)
+ggsave("figures/Combined Corpus Christi.png", width = 5, height = 10)
 ```
 
 
@@ -809,20 +900,9 @@ library(drc)
 EDcomp(cc_red1, c(50, 50),  type = "absolute") -> ed_test
 ```
 
-```{r}
-qdrg(object = cc_red1, data = cc_dt)
-```
 
 
-```{r}
-# If $contr exists, proceed:
-if (!is.null(ed_test$contr)) {
-  gh <- glht(mod, linfct = ed_test$contr)
-  cld(gh)
-} else {
-  cat("No contrast matrix found in EDcomp output.\n")
-}
-```
+
 
 
 
