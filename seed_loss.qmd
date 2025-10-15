@@ -7,16 +7,13 @@ editor: visual
 
 
 
-```{r}
-data1 %>% 
-  mutate(total_seed_loss = if_else(is.na(total_seed_loss), 0, total_seed_loss)) -> data1
-```
+
 
 
 ```{r}
 data1 %>% 
 #  filter(retrieval_time_months < 13) %>% 
-  ggplot(aes(x=retrieval_time_months, y=total_seed_loss, color=as_factor(depth_cm))) +
+  ggplot(aes(x=retrieval_time_months, y=seed_loss, color=as_factor(depth_cm))) +
   geom_point() +
   geom_smooth() +
   facet_wrap(location ~ species) 
@@ -25,49 +22,275 @@ ggsave("figures/raw_figure.png", width = 12, height = 7)
 ```
 
 
-```{r}
-#| warning: false
-drm(total_seed_loss ~ retrieval_time_months, fct = W1.3(),
-  curveid = interaction(species, depth_cm), data=lub_dt) -> model_full
-```
-
 
 ```{r}
 #| warning: false
+
 drm(total_seed_loss ~ retrieval_time_months, fct = W1.3(),
-  curveid = species, data=lub_dt) -> model_red1
+  curveid = interaction(species, location, depth_cm), data=data1) -> seed_loss
 ```
 
+
+
+
+Lubbock
+
 ```{r}
-anova(model_full, model_red2)
+#| warning: false
+
+drm(seed_loss ~ retrieval_time_months, fct = W1.3(),
+  curveid = interaction(species, depth_cm), data=lub_dt) -> sl_full_lub
+```
+
+
+```{r}
+#| warning: false
+drm(seed_loss ~ retrieval_time_months, fct = W1.3(),
+  curveid = species, data=lub_dt) -> sl_red1_lub
+```
+
+
+
+```{r}
+anova(sl_full_lub, sl_red1_lub)
 ```
 
 ```{r}
 #| warning: false
+drm(seed_loss ~ retrieval_time_months, fct = W1.3(),
+  data=lub_dt) -> sl_red2_lub
+```
+
+
+```{r}
+anova(sl_red1_lub, sl_red2_lub)
+```
+
+
+
+
+
+
+
+
+```{r}
+plot(sl_red1_lub)
+```
+
+
+```{r}
+AIC(sl_full_lub, sl_red1_lub, sl_red2_lub, Red.3, fit)
+```
+
+
+```{r}
+# Add predictions to data
+lub_dt$predicted <- predict(sl_full_lub)
+
+# Then compute RMSE or ME per group
+lub_dt %>%
+  group_by(species, depth_cm) %>%
+  summarise(
+    RMSE = sqrt(mean((total_seed_loss - predicted)^2)),
+    ME = 1 - sum((total_seed_loss - predicted)^2) /
+             sum((total_seed_loss - mean(total_seed_loss))^2)
+  )
+```
+
+
+```{r}
+# Add predictions to data
+lub_dt$predicted <- predict(sl_red1_lub)
+
+# Then compute RMSE or ME per group
+lub_dt %>%
+  group_by(species) %>%
+  summarise(
+    RMSE = sqrt(mean((total_seed_loss - predicted)^2)),
+    ME = 1 - sum((total_seed_loss - predicted)^2) /
+             sum((total_seed_loss - mean(total_seed_loss))^2)
+  )
+```
+
+
+
+```{r}
+# Add predictions to data
+lub_dt$predicted <- predict(sl_red2_lub)
+
+# Then compute RMSE or ME per group
+lub_dt %>%
+  summarise(
+    RMSE = sqrt(mean((total_seed_loss - predicted)^2)),
+    ME = 1 - sum((total_seed_loss - predicted)^2) /
+             sum((total_seed_loss - mean(total_seed_loss))^2)
+  )
+```
+
+
+
+```{r}
+#| warning: false
+newdata <- expand.grid(retrieval_time_months=seq(0, 60, length=60))
+
+newdata1 <- tibble(species="Palmer amaranth", newdata)
+newdata2 <- tibble(species="waterhemp", newdata)
+
+nd = rbind(newdata1, newdata2)
+
+broom:::augment.drc(sl_red1_lub, newdata=nd, conf.int = TRUE) -> pm_lub_sl
+
+```
+
+
+```{r}
+lub_dt %>% 
+  ggplot(aes(x=retrieval_time_months, y=total_seed_loss, shape=species)) +
+  geom_jitter(aes(color = species, shape=species), alpha = 0.1, size = 4) +
+  geom_point(data = pm_lub_sl %>% 
+               mutate(retrieval_time_months = round(retrieval_time_months,0)) %>% 
+               filter(retrieval_time_months %in% c(0,6,12,24,36,48,60)), 
+             mapping= aes(x = retrieval_time_months, y = .fitted, 
+                          shape=species, color = species), 
+             size = 4) +
+  geom_line(data = pm_lub_sl, aes(x = retrieval_time_months, y = .fitted, color = species), 
+            size = 1.2) +
+  geom_ribbon(data = pm_lub_sl, mapping=aes(x = retrieval_time_months, y = .fitted, 
+                                         ymin=.lower, ymax=.upper, fill = species), 
+              alpha=0.1) +
+  theme_foundation() +
+  scale_color_colorblind() +
+  scale_fill_colorblind() +
+  facet_grid(~location) +
+  scale_shape_manual(values = c(16, 18)) +
+  labs(x="Month after burial", y="# of seed loss") +
+  scale_x_continuous(
+    breaks = c(0, 12, 24, 36, 48, 60)) +
+  scale_y_continuous(#limits = c(0,200), 
+                     breaks = c(0, 50, 100, 150, 200)) +
+  theme(legend.background = element_blank(),
+        legend.position = "bottom",
+        legend.box = element_blank(),
+        legend.key = element_blank(),
+        axis.title =  element_markdown(size=12),
+        axis.text = element_text(size=12),
+        strip.text = element_text(size = 12, face = "bold")) +
+  guides(fill = "none") -> fig_lub_1
+
+
+
+ggsave("figures/Lubbock seed loss.png", width = 5, height = 5)
+```
+
+
+
+```{r}
+ED(sl_red1_lub, c(1, 10, 50, 90))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+College Station
+
+```{r}
+#| warning: false
+
 drm(total_seed_loss ~ retrieval_time_months, fct = W1.3(),
-  data=lub_dt) -> model_red2
+  curveid = interaction(species, depth_cm), data=cs_dt) -> sl_full_cs
 ```
 
 
 ```{r}
-anova(model_red1, model_red2)
+#| warning: false
+drm(total_seed_loss ~ retrieval_time_months, fct = W1.3(),
+  curveid = species, data=cs_dt) -> sl_red1_cs
 ```
 
+
+```{r}
+anova(sl_full_cs, sl_red1_cs)
+```
+
+
+```{r}
+#| warning: false
+drm(total_seed_loss ~ retrieval_time_months, fct = W1.3(),
+  data=cs_dt) -> sl_red2_cs
+```
+
+
+```{r}
+anova(sl_red1_cs, sl_red2_cs)
+```
+
+```{r}
+tidy(sl_red2_cs)
+```
 
 
 
 ```{r}
-plot(model_red1)
+plot(sl_red2_cs)
 ```
 
 
 
 
 
+Corpus Christi
+
+```{r}
+#| warning: false
+
+drm(total_seed_loss ~ retrieval_time_months, fct = W1.3(),
+  curveid = interaction(species, depth_cm), data=cc_dt) -> sl_full_cc
+```
+
+
+```{r}
+#| warning: false
+drm(total_seed_loss ~ retrieval_time_months, fct = W1.3(),
+  curveid = species, data=cc_dt) -> sl_red1_cc
+```
+
+
+```{r}
+anova(sl_full_cc, sl_red1_cc)
+```
+
+
+```{r}
+#| warning: false
+drm(total_seed_loss ~ retrieval_time_months, fct = W1.3(),
+  data=cc_dt) -> sl_red2_cc
+```
+
+
+```{r}
+anova(sl_red1_cc, sl_red2_cc)
+```
 
 
 
+```{r}
+tidy(sl_full_cc)
+```
 
+
+
+```{r}
+plot(sl_full_cc)
+```
 
 
 

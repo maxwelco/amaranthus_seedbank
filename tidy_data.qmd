@@ -1,0 +1,144 @@
+---
+title: "data cleaning"
+format: html
+editor: visual
+---
+
+
+```{r}
+library(tidyverse)
+library(readxl)
+library(drc)
+library(ggthemes)
+library(broom)
+library(patchwork)
+```
+
+```{r}
+dt1 <- read_excel("data/seed_burial_dt.xlsx", sheet = "6 Months") %>% 
+  janitor::clean_names() %>% 
+  mutate_if(is_character, as_factor)
+
+dt2 <- read_excel("data/seed_burial_dt.xlsx", sheet = "12 Months") %>% 
+  janitor::clean_names() %>% 
+  mutate_at(c("viable_seed_as_percent_of_original", "dormancy_level_in_the_seedlot_percent"),
+            as.double) %>% 
+  mutate_if(is_character, as_factor)
+
+dt3 <- read_excel("data/seed_burial_dt.xlsx", sheet = "24 Months") %>% 
+  janitor::clean_names() %>% 
+  mutate_if(is_character, as_factor)
+
+dt4 <- read_excel("data/seed_burial_dt.xlsx", sheet = "36 Months") %>% 
+  janitor::clean_names() %>% 
+  mutate(depth_cm = parse_number(depth_cm)) %>% 
+  mutate_if(is_character, as_factor) 
+
+dt5 <- read_excel("data/seed_burial_dt.xlsx", sheet = "36 Months") %>% 
+  janitor::clean_names() %>% 
+  mutate(depth_cm = parse_number(depth_cm)) %>% 
+  mutate_if(is_character, as_factor)
+
+dt6 <- read_excel("data/seed_burial_dt.xlsx", sheet = "48 Months") %>% 
+  janitor::clean_names() %>% 
+  mutate(depth_cm = parse_number(depth_cm)) %>%
+  mutate_if(is_character, as_factor)
+
+dt7 <- read_excel("data/seed_burial_dt.xlsx", sheet = "60 Months") %>% 
+  janitor::clean_names() %>% 
+  mutate_if(is_character, as_factor) %>% 
+  mutate(germination_1_6_days = as.double(germination_1_6_days)) %>% 
+  dplyr::select(-germination_1_6_days, -germination_2_12_days, -germination_3_20_days) %>% 
+  rename(number_seeds_excavated = no_of_seeds_retreived,
+         number_seed_germinated = number_seeds_germinated,
+         number_dormant_seed_tz = number_dormant_seeds_tz) 
+```
+
+```{r}
+dt1 %>% 
+  bind_rows(dt2) %>% 
+  bind_rows(dt3) %>% 
+  bind_rows(dt4) %>% 
+  bind_rows(dt5) %>% 
+  bind_rows(dt6) %>% 
+  bind_rows(dt7) %>% 
+  mutate(location = case_when(
+    location == "CS" ~ "College Station",
+    location == "CC" ~ "Corpus Christi",
+    location == "LUB" ~ "Lubbock",
+    TRUE ~ as_factor(location)
+  )) %>% 
+  mutate(species = case_when(
+    species == "WH" ~ "waterhemp",
+    species == "Waterhemp" ~ "waterhemp",
+    species == "PA" ~ "Palmer amaranth",
+    species == "Palmer" ~ "Palmer amaranth",
+    TRUE ~ as_factor(species)
+  )) -> data
+```
+
+
+```{r}
+data %>% 
+ group_by(species, location, depth_cm, field_rep, number_seeds_buried) %>% 
+ count() %>% 
+ mutate(retrieval_time_months = 0) %>% 
+ mutate(viable_seed_as_percent_of_original = 100) %>% 
+ dplyr::select(-n) -> at_zero
+```
+
+
+```{r}
+data %>% 
+  bind_rows(at_zero) %>% 
+  mutate(total_seed_loss = if_else(is.na(total_seed_loss), 0, total_seed_loss)) -> data1
+```
+
+
+Lubbock
+
+```{r}
+data1 %>% filter(location=="Lubbock") -> lub_dt
+```
+
+College Station 
+
+```{r}
+data1 %>% filter(location=="College Station") -> cs_dt
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

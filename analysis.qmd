@@ -96,7 +96,8 @@ data %>%
 
 ```{r}
 data %>% 
-  bind_rows(at_zero) -> data1
+  bind_rows(at_zero) %>% 
+  mutate(total_seed_loss = if_else(is.na(total_seed_loss), 0, total_seed_loss)) -> data1
 ```
 
 

@@ -1,0 +1,54 @@
+---
+title: "exploring"
+format: html
+editor: source
+---
+
+```{r}
+# install.packages("ggstream")
+library(ggstream)
+```
+
+
+```{r}
+data1 %>% 
+  mutate(non_viable_seeds = number_seeds_excavated - (number_viable_seed)) %>% 
+  group_by(species, location, retrieval_time_months) %>% 
+  summarise(viable_seed = mean(number_viable_seed),
+            non_viable_seeds = mean(non_viable_seeds),
+            seed_loss = mean(total_seed_loss)) %>% 
+  pivot_longer(cols = c("viable_seed", "seed_loss", "non_viable_seeds"), names_to = "seeds_over_year") %>% 
+  mutate(total = if_else(is.na(value), 0, value)) %>% 
+  mutate(total = round(total, 0)) -> stream_dt
+```
+
+
+```{r}
+stream_dt %>% 
+  filter(location == "Corpus Christi" & species == "waterhemp") %>% 
+  filter(retrieval_time_months>0) %>% 
+  ggplot(aes(x = retrieval_time_months, y = total, 
+             fill = seeds_over_year, label = seeds_over_year)) +
+  geom_stream(bw = 0.75, 
+              position = "identity",
+              type = "proportional", 
+              extra_span = 0.2, 
+              true_range = "both") +
+  geom_stream_label(position = "identity",
+                    type = "proportional") +
+  scale_fill_fivethirtyeight() +
+  scale_x_continuous(breaks = c(0, 6, 12, 24, 36, 48, 60)) +
+  annotate("segment", x = 6, xend = 25, y = 0.91, yend = 0.91, color = "red") +
+  theme(legend.position = "none")
+```
+
+```{r}
+stream_dt %>%
+  complete(retrieval_time_months, seeds_over_year, fill = list(total = 0))
+```
+
+```{r}
+ggplot(blockbusters, aes(x = year, y = box_office, fill = genre)) +
+  geom_stream(type = "ridge")
+```
+
