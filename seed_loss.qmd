@@ -1,0 +1,82 @@
+---
+title: "seed loss"
+format: html
+editor: visual
+---
+
+
+
+
+```{r}
+data1 %>% 
+  mutate(total_seed_loss = if_else(is.na(total_seed_loss), 0, total_seed_loss)) -> data1
+```
+
+
+```{r}
+data1 %>% 
+#  filter(retrieval_time_months < 13) %>% 
+  ggplot(aes(x=retrieval_time_months, y=total_seed_loss, color=as_factor(depth_cm))) +
+  geom_point() +
+  geom_smooth() +
+  facet_wrap(location ~ species) 
+
+ggsave("figures/raw_figure.png", width = 12, height = 7)
+```
+
+
+```{r}
+#| warning: false
+drm(total_seed_loss ~ retrieval_time_months, fct = W1.3(),
+  curveid = interaction(species, depth_cm), data=lub_dt) -> model_full
+```
+
+
+```{r}
+#| warning: false
+drm(total_seed_loss ~ retrieval_time_months, fct = W1.3(),
+  curveid = species, data=lub_dt) -> model_red1
+```
+
+```{r}
+anova(model_full, model_red2)
+```
+
+```{r}
+#| warning: false
+drm(total_seed_loss ~ retrieval_time_months, fct = W1.3(),
+  data=lub_dt) -> model_red2
+```
+
+
+```{r}
+anova(model_red1, model_red2)
+```
+
+
+
+
+```{r}
+plot(model_red1)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

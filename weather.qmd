@@ -14,17 +14,145 @@ download_daymet(site = "College Station Farm",
                 lat = 30.537130,
                 lon = -96.425917,
                 start = 2016,
-                end = 2020,
+                end = 2021,
                 internal = TRUE) -> w_cs
+
+download_daymet(site = "Corpus Christi Farm",
+                lat = 27.780910,
+                lon = -97.561914,
+                start = 2016,
+                end = 2021,
+                internal = TRUE) -> w_cc
+
+download_daymet(site = "Lubbock Farm",
+                lat = 33.690435,
+                lon = -101.824649,
+                start = 2016,
+                end = 2021,
+                internal = TRUE) -> w_lub
+```
+```{r}
+w_cs$data %>% 
+  janitor::clean_names() %>% 
+  mutate(location = "College Station") -> w_cs1
+
+w_cc$data %>% 
+  janitor::clean_names() %>% 
+  mutate(location = "Corpus Christi") -> w_cc1
+
+w_lub$data %>% 
+  janitor::clean_names() %>% 
+  mutate(location = "Lubbock") -> w_lub1
 ```
 
 
 
 ```{r}
-w_cs$data %>% 
+w_cs1 %>% 
+  bind_rows(w_cc1) %>% 
+  bind_rows(w_lub1) %>%
   janitor::clean_names() %>% 
   mutate(date = ymd(paste(year, "01", "01", sep = "-")) + days(yday - 1)) %>% 
-  ggplot(aes(x = date, y = prcp_mm_day)) +
-  geom_col()
+  mutate_if(is_character, as_factor) %>% 
+  filter(date >= "2016-04-01" & date <= "2021-11-01") -> comb_weather
 ```
+
+
+```{r}
+comb_weather %>% 
+
+```
+
+
+
+```{r}
+comb_weather %>% 
+  group_by(location) %>% 
+  summarise(sum = sum(prcp_mm_day))
+```
+
+
+```{r}
+comb_weather %>% 
+  mutate(month = as_factor(month(date))) %>% 
+  arrange(location, date) %>%  # Make sure data is sorted
+  group_by(location) %>%
+  mutate(cum_rain = cumsum(prcp_mm_day)) -> comb_weather1
+```
+
+```{r}
+comb_weather1 %>% 
+  filter(date %in% c(as.Date("2016-04-01"), # 0
+                     as.Date("2016-10-01"), # 6
+                     as.Date("2017-04-01"), # 12
+                     as.Date("2018-04-01"), # 24
+                     as.Date("2019-04-01"), # 36
+                     as.Date("2020-04-01"), # 48
+                     as.Date("2021-04-01") # 60
+                     )) -> retriv_1
+```
+
+
+
+
+```{r}
+comb_weather1 %>% 
+  ggplot(aes(x=date, y=cum_rain)) +
+  geom_smooth(method = "loess", span = 0.2, color = "#333333") +
+  geom_col(data=comb_weather1, 
+           mapping = aes(x=date, y=prcp_mm_day),
+           color = "purple") +
+  facet_grid(~location) +
+  theme_foundation() +
+  scale_y_continuous(limits = c(0, 7500), breaks = c(0,1500,3000,4500, 6000, 7500)) +
+  labs(x = "", y="") +
+  theme(axis.text.x = element_text(angle = 45),
+        strip.text = element_text(size=12, face="bold")) -> fig_wea
+```
+
+
+```{r}
+fig_wea +
+  geom_point(data = retriv_1, mapping = aes(x=date, y=cum_rain), 
+             color = "red", size = 5)
+
+ggsave("figures/prec.png", width = 10, height = 5)
+```
+
+
+```{r}
+annotate("segment", x = as.Date("2016-04-01"), xend = as.Date("2016-04-01"), y = 0, yend = 4000,
+  colour = "blue", linetype="dotted") +
+  annotate("segment", x = as.Date("2016-10-01"), xend = as.Date("2016-10-01"), y = 0, yend = 4000,
+  colour = "lightblue", linetype="dotted") +
+  geom_text(data=comb_weather1 %>% filter(location=="College Station"),
+            mapping=aes(x=as.Date("2021-09-20"), y=7000),
+            label= "6726 mm", size=3, hjust=1) 
+
+
+
+```
+
+
+```{r}
+comb_weather1 %>% 
+  ggplot(aes(x=date)) +
+  geom_ribbon(aes(ymin = tmin_deg_c, ymax = tmax_deg_c), fill = "lightblue", alpha = 0.3) +
+  geom_point(aes(y = tmax_deg_c), color = "red", size = 0.6, alpha = 0.1) +
+  geom_point(aes(y = tmin_deg_c), color = "blue", size = 0.6, alpha = 0.1) +
+  facet_grid(~location) +
+  theme_foundation() +
+  scale_y_continuous(limits = c(0, 40)) +
+  labs(x="", y="")
+
+ggsave("figures/temp.png", width = 10, height = 4)
+```
+
+
+
+
+
+
+
+
 
