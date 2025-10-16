@@ -117,41 +117,6 @@ ggsave("figures/raw_figure.png", width = 12, height = 7)
 
 
 
-
-```{r}
-#| warning: false
-#| 
-drm(viable_seed_as_percent_of_original ~ retrieval_time_months, fct = W1.4(),
-  curveid = interaction(species, location, depth_cm), data=data1) -> full_model
-
-```
-
-```{r}
-#| warning: false
-drm(viable_seed_as_percent_of_original ~ retrieval_time_months, fct = W1.4(),
-  curveid = interaction(species, location), data=data1) -> reduced_model
-```
-
-
-```{r}
-anova(full_model, reduced_model)
-```
-
-
-```{r}
-summary(full_model)
-```
-
-
-
-
-Lubbock
-
-```{r}
-data1 %>% filter(location=="Lubbock") -> lub_dt
-```
-
-
 ```{r}
 #| warning: false
 drm(viable_seed_as_percent_of_original ~ retrieval_time_months, fct = W1.3(),
@@ -194,7 +159,13 @@ AIC(lub_full, lub_red1, lub_red2)
 
 
 ```{r}
-plot(lub_full)
+tidy(lub_full)
+```
+
+
+
+```{r}
+plot(lub_full, type="all")
 ```
 
 

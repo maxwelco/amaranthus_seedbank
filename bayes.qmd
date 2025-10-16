@@ -1,0 +1,91 @@
+---
+title: "bayes"
+format: html
+editor: visual
+---
+
+```{r}
+library(brms)
+```
+```{r}
+all_data %>% 
+  mutate(viability_prop= viable_seed_as_percent_of_original / 100) %>% 
+  mutate(viability_prop = case_when(
+    viability_prop == 1 ~ 0.999,
+    viability_prop == 0 ~ 0.001,
+    TRUE ~ viability_prop
+  )) -> all_data1
+```
+
+
+```{r}
+weibull_formula <- bf(
+  viability_prop ~ d + (a - d) * exp(- (retrieval_time_months / c)^b),
+  
+  a + b + c + d ~ species * depth_cm + (1 | location) + (1 | run/field_rep),
+  
+  nl = TRUE
+)
+```
+
+```{r}
+priors <- c(
+  prior(beta(2, 2), nlpar = "a"),        # lower bound of viability (proportion)
+  prior(beta(2, 2), nlpar = "d"),        # upper bound (initial viability)
+  prior(normal(5, 2), nlpar = "c"),      # inflection point (in months)
+  prior(normal(1, 1), nlpar = "b"),      # shape
+  prior(exponential(5), class = "phi")  # beta precision
+)
+```
+
+
+```{r}
+eps <- 0.001
+all_data1$viability_prop <- (all_data1$viable_seed_as_percent_of_original / 100) * (1 - 2 * eps) + eps
+```
+
+
+```{r}
+weibull_formula_simple <- bf(
+  viability_prop ~ d + (a - d) * exp(- (retrieval_time_months / c)^b),
+  a + b + c + d ~ 1,
+  nl = TRUE
+)
+```
+
+
+```{r}
+priors_simple <- c(
+  prior(beta(2, 2), nlpar = "a"),
+  prior(beta(2, 2), nlpar = "d"),
+  prior(normal(10, 5), nlpar = "c"),
+  prior(normal(1, 1), nlpar = "b"),
+  prior(exponential(5), class = "phi")
+)
+```
+
+
+```{r}
+fit_simple <- brm(
+  formula = weibull_formula_simple,
+  data = all_data1,
+  family = Beta(),
+  prior = priors_simple,
+  chains = 4,
+  iter = 2000,
+  control = list(adapt_delta = 0.99),
+  seed = 123,
+  inits = 0
+)
+```
+
+
+
+
+
+
+
+
+
+
+

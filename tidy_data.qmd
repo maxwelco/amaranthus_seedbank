@@ -126,7 +126,8 @@ data %>%
   mutate(total_seed_loss = if_else(is.na(total_seed_loss), 0, total_seed_loss)) %>% 
   mutate_if(is_character, as_factor) %>% 
   mutate(seed_loss = 200 - total_seed_loss) %>% 
-  mutate(run = as_factor("1")) -> data1
+  mutate(run = as_factor("1")) %>% 
+  mutate(depth_cm = as_factor(depth_cm)) -> data1
 ```
 
 
@@ -215,7 +216,8 @@ phase_2_1 %>%
   )) %>% 
   separate(species, into=c("species", "biotype"), sep = "_") %>% 
   mutate_if(is_character, as_factor) %>% 
-  rename(retrieval_time_months = retrieval_time) -> phase_comb
+  rename(retrieval_time_months = retrieval_time) %>% 
+  mutate(depth_cm = as_factor(depth_cm)) -> phase_comb
 ```
 
 
@@ -275,17 +277,11 @@ data1 %>%
 
 ```{r}
 all_data %>% 
-  ggplot(aes(x=retrieval_time_months, y=viable_seed_as_percent_of_original)) +
+  ggplot(aes(x=retrieval_time_months, y=viable_seed_as_percent_of_original, 
+             color=species)) +
   geom_point() +
   geom_smooth() +
-  facet_grid(species~location)
-```
-
-
-Lubbock
-
-```{r}
-phase2_dt %>% filter(location=="Lubbock") -> lub_dt
+  facet_grid(depth_cm~location)
 ```
 
 
@@ -293,24 +289,9 @@ phase2_dt %>% filter(location=="Lubbock") -> lub_dt
 
 
 
-Lubbock
-
-```{r}
-all_data %>% filter(location=="Lubbock") -> lub_dt
-```
-
-College Station 
-
-```{r}
-all_data %>% filter(location=="College Station") -> cs_dt
-```
-
-Corpus Christi 
 
 
-```{r}
-all_data %>% filter(location=="Corpus Christi") -> cc_dt
-```
+
 
 
 
