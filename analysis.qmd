@@ -194,6 +194,13 @@ AIC(lub_full, lub_red1, lub_red2)
 
 
 ```{r}
+plot(lub_full)
+```
+
+
+
+
+```{r}
 # Add predictions to data
 lub_dt$predicted <- predict(lub_full)
 
