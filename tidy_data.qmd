@@ -257,7 +257,7 @@ phase_comb %>%
 #| warning: false
 phase2_dt %>% 
   ggplot(aes(x=retrieval_time_months, y=viable_seed_as_percent_of_original,
-             color=biotype)) +
+             color=species)) +
   geom_point() +
   facet_wrap(species~location~depth_cm) +
   scale_x_continuous(breaks=c(0, 6, 12, 36)) +

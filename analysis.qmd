@@ -332,10 +332,6 @@ ED(lub_red2, c(10,50,90), interval = "delta", type = "absolute")
 ## College Station 
 
 
-```{r}
-data1 %>% filter(location=="College Station") -> cs_dt
-```
-
 
 ```{r}
 #| warning: false

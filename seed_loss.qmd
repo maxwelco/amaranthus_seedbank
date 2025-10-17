@@ -62,6 +62,8 @@ drm(seed_loss ~ retrieval_time_months, fct = W1.3(),
 ```
 
 
+
+
 ```{r}
 anova(sl_red1_lub, sl_red2_lub)
 ```
@@ -145,7 +147,7 @@ broom:::augment.drc(sl_red1_lub, newdata=nd, conf.int = TRUE) -> pm_lub_sl
 
 ```{r}
 lub_dt %>% 
-  ggplot(aes(x=retrieval_time_months, y=total_seed_loss, shape=species)) +
+  ggplot(aes(x=retrieval_time_months, y=seed_loss, shape=species)) +
   geom_jitter(aes(color = species, shape=species), alpha = 0.1, size = 4) +
   geom_point(data = pm_lub_sl %>% 
                mutate(retrieval_time_months = round(retrieval_time_months,0)) %>% 
@@ -169,7 +171,8 @@ lub_dt %>%
   scale_y_continuous(#limits = c(0,200), 
                      breaks = c(0, 50, 100, 150, 200)) +
   theme(legend.background = element_blank(),
-        legend.position = "bottom",
+        legend.position = c(0.78, 0.91),
+        legend.title = element_blank(),
         legend.box = element_blank(),
         legend.key = element_blank(),
         axis.title =  element_markdown(size=12),
@@ -182,10 +185,13 @@ lub_dt %>%
 ggsave("figures/Lubbock seed loss.png", width = 5, height = 5)
 ```
 
+```{r}
+tidy(sl_red1_lub)
+```
 
 
 ```{r}
-ED(sl_red1_lub, c(1, 10, 50, 90))
+ED(sl_red1_lub, c(50, 90))
 ```
 
 

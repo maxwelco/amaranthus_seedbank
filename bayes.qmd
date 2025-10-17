@@ -7,6 +7,8 @@ editor: visual
 ```{r}
 library(brms)
 ```
+
+
 ```{r}
 all_data %>% 
   mutate(viability_prop= viable_seed_as_percent_of_original / 100) %>% 
@@ -18,66 +20,116 @@ all_data %>%
 ```
 
 
-```{r}
-weibull_formula <- bf(
-  viability_prop ~ d + (a - d) * exp(- (retrieval_time_months / c)^b),
-  
-  a + b + c + d ~ species * depth_cm + (1 | location) + (1 | run/field_rep),
-  
-  nl = TRUE
-)
-```
 
 ```{r}
-priors <- c(
-  prior(beta(2, 2), nlpar = "a"),        # lower bound of viability (proportion)
-  prior(beta(2, 2), nlpar = "d"),        # upper bound (initial viability)
-  prior(normal(5, 2), nlpar = "c"),      # inflection point (in months)
-  prior(normal(1, 1), nlpar = "b"),      # shape
-  prior(exponential(5), class = "phi")  # beta precision
-)
-```
-
-
-```{r}
-eps <- 0.001
-all_data1$viability_prop <- (all_data1$viable_seed_as_percent_of_original / 100) * (1 - 2 * eps) + eps
-```
-
-
-```{r}
-weibull_formula_simple <- bf(
-  viability_prop ~ d + (a - d) * exp(- (retrieval_time_months / c)^b),
-  a + b + c + d ~ 1,
+full_model <- bf(
+  viability_prop ~ c + (d - c) * exp(- (retrieval_time_months / e)^b),
+  b + c + d + e ~ species * depth_cm + (1 | location) + (1 | run) + (1 | location:field_rep),
   nl = TRUE
 )
 ```
 
 
 ```{r}
-priors_simple <- c(
-  prior(beta(2, 2), nlpar = "a"),
-  prior(beta(2, 2), nlpar = "d"),
-  prior(normal(10, 5), nlpar = "c"),
-  prior(normal(1, 1), nlpar = "b"),
-  prior(exponential(5), class = "phi")
-)
-```
-
-
-```{r}
-fit_simple <- brm(
-  formula = weibull_formula_simple,
+fit_full <- brm(
+  formula = full_model,
   data = all_data1,
-  family = Beta(),
-  prior = priors_simple,
+  family = Beta(),  # or beta/logit if viability is bounded
+  prior = c(
+    prior(normal(1, 1), nlpar = "b"),
+    prior(normal(0, 10), nlpar = "c"),
+    prior(normal(100, 10), nlpar = "d"),
+    prior(normal(10, 5), nlpar = "e")
+  ),
+  save_pars = save_pars(all = TRUE),  
   chains = 4,
-  iter = 2000,
-  control = list(adapt_delta = 0.99),
-  seed = 123,
-  inits = 0
+  iter = 4000,
+  control = list(adapt_delta = 0.95)
 )
 ```
+
+Reduced model without interaction
+
+```{r}
+Red_model1 <- bf(
+  viability_prop ~ c + (d - c) * exp(- (retrieval_time_months / e)^b),
+  b + c + d + e ~ species + (1 | location) + (1 | run) + (1 | location:field_rep),
+  nl = TRUE
+)
+```
+
+
+```{r}
+fit_red1 <- brm(
+  formula = full_model,
+  data = all_data1,
+  family = Beta(),  # or beta/logit if viability is bounded
+  prior = c(
+    prior(normal(1, 1), nlpar = "b"),
+    prior(normal(0, 10), nlpar = "c"),
+    prior(normal(100, 10), nlpar = "d"),
+    prior(normal(10, 5), nlpar = "e")
+  ),
+  save_pars = save_pars(all = TRUE),  
+  chains = 4,
+  iter = 4000,
+  control = list(adapt_delta = 0.95)
+)
+```
+
+
+```{r}
+loo_compare(loo(fit_full), loo(fit_red1))
+```
+
+```{r}
+bayes_factor(fit_full, fit_red1)
+```
+
+
+
+```{r}
+all_data1$field_rep <- as.factor(all_data1$field_rep)
+newdata <- expand.grid(
+  retrieval_time_months = seq(0, 60, length.out = 100),  # or 0–36 for run 2
+  species = levels(all_data1$species),
+  depth_cm = levels(all_data1$depth_cm),
+  location = levels(all_data1$location),
+  run = levels(all_data1$run),
+  field_rep = levels(all_data1$field_rep)
+  )
+```
+
+
+```{r}
+pred <- fitted(fit_full, newdata = newdata, probs = c(0.025, 0.975))
+newdata$estimate <- pred[, "Estimate"]
+newdata$lower <- pred[, "Q2.5"]
+newdata$upper <- pred[, "Q97.5"]
+
+```
+
+
+
+```{r}
+ggplot(newdata, aes(x = retrieval_time_months, y = estimate, color = depth_cm)) +
+  geom_line(size = 1) +
+  geom_ribbon(aes(ymin = lower, ymax = upper, fill = depth_cm), color = NA, alpha = 0.2) +
+  facet_wrap(~ species) +
+  labs(
+    title = "Bayesian Weibull Model: Seed Viability Over Time",
+    x = "Months of Burial",
+    y = "Predicted Viability (%)"
+  ) +
+  theme_minimal() +
+  facet_wrap(run * location ~ species, ncol=3) 
+
+ggsave("bayes.png", width = 8, height = 10)
+```
+
+
+
+
 
 
 
