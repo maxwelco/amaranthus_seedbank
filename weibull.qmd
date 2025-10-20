@@ -1,0 +1,266 @@
+---
+title: "weibull"
+format: html
+editor: visual
+---
+
+
+```{r}
+all_data %>% 
+  ggplot(aes(x=retrieval_time_months, y=viable_seed_as_percent_of_original,
+             color=as_factor(depth_cm))) +
+  geom_point() +
+  geom_smooth() +
+  facet_wrap(location ~ species)
+```
+
+
+
+```{r}
+all_data %>% 
+  mutate(viability_prop= viable_seed_as_percent_of_original / 100) %>% 
+  mutate(viability_prop = case_when(
+    viability_prop == 1 ~ 0.999,
+    viability_prop == 0 ~ 0.001,
+    TRUE ~ viability_prop
+  )) %>% 
+  mutate(field_rep = as_factor(field_rep)) -> all_data1
+```
+
+```{r}
+install_cmdstan()
+set_cmdstan_path()
+```
+```{r}
+all_data1 %>% 
+  filter(location == "Lubbock" & run == "1") %>%
+  filter(complete.cases(retrieval_time_months, location, field_rep, run)) -> lubbock_run1
+```
+
+```{r}
+all_data1 %>% 
+  filter(location == "Corpus Christi" & run == "2") %>%
+  ggplot(aes(x=retrieval_time_months, y=number_viable_seed)) +
+  geom_jitter() +
+  labs(title = "Lubbock Run 1 Data", x = "Months", y = "Viability Proportion") +
+  theme_minimal() +
+  ylim(0,200)
+```
+
+
+```{r}
+library(brms)
+
+brm(
+  bf(viability_prop ~ exp(-(retrieval_time_months / lambda)^1.3),
+     lambda ~ 1 + (1 | species/depth_cm),
+     nl = TRUE),
+  data = all_data1 %>% filter(location == "Lubbock"),
+  family = Beta(),
+  prior(gamma(2, 1), class = "b", nlpar = "lambda"),
+  chains = 2,
+  iter = 2000,
+  backend = "cmdstanr",
+  control = list(adapt_delta = 0.95)
+) -> weibull_lubbock
+```
+
+
+
+
+```{r}
+preds <- fitted(weibull_lubbock, newdata = lubbock_run1, summary = TRUE)
+
+ggplot(preds, aes(x = retrieval_time_months, y = .value)) +
+  stat_summary(fun = mean, geom = "line", color = "blue") +
+  stat_summary(fun.data = mean_cl_normal, geom = "ribbon", alpha = 0.2) +
+  geom_point(data = lubbock_run1, aes(y = viability_prop), color = "black", alpha = 0.6) +
+  labs(title = "Weibull Decay — Lubbock Run 1", x = "Months", y = "Viability") +
+  theme_minimal()
+```
+
+
+```{r}
+nls_model <- nls(
+  viability_prop ~ A / (1 + B * retrieval_time_months),
+  data = all_data1 %>% filter(location == "Corpus Christi"),
+  start = list(A = 1, B = 0.1)
+)
+summary(nls_model)
+```
+
+```{r}
+predicted_values <- predict(nls_model)
+new_data <- data.frame(retrieval_time_months = seq(0, 60, by = 1))
+new_preds <- predict(nls_model, newdata = new_data)
+
+```
+
+```{r}
+plot(new_data$retrieval_time_months, new_preds, type = "l", col = "blue", lwd = 2)
+points(lubbock_run1$retrieval_time_months, lubbock_run1$viability_prop, col = "black", pch = 16)
+
+```
+
+
+```{r}
+library(nlme)
+
+nlme_model <- nlme(
+  viability_prop ~ A / (1 + B * retrieval_time_months),
+  data = all_data1 %>% filter(location == "Corpus Christi")  %>%
+  drop_na(viability_prop, retrieval_time_months, run),
+  fixed = A + B ~ 1,
+  random = A ~ 1 | run,
+  start = c(A = 1, B = 0.1)
+)
+
+```
+
+
+```{r}
+predicted_fixed <- predict(nlme_model, level = 0)
+clean_data$predicted_fixed <- predicted_fixed
+```
+
+
+
+
+```{r}
+brm(
+  bf(viability_prop ~ A / (1 + B * retrieval_time_months),
+     A ~ 1 + depth_cm * species + (1 | location/field_rep),
+     B ~ 1,
+     nl = TRUE),
+  data = all_data1 %>% filter(location == "Corpus Christi"),
+  family = Beta(),
+  prior = c(
+    prior(normal(7, 0.5), class = "b", nlpar = "A"),
+    prior(normal(0.2, 0.05), class = "b", nlpar = "B")
+  ),
+  chains = 4,
+  iter = 4000,
+  backend = "cmdstanr"
+) -> nls_brm_model
+
+```
+
+```{r}
+library(tidybayes)
+
+nls_brm_model %>%
+  add_fitted_draws(newdata = new_data, n = 100) %>%
+  mutate(.value = log(.value)) %>%
+  ggplot(aes(x = retrieval_time_months, y = .value)) +
+  geom_jitter(data = lubbock_run1, aes(y = viability_prop), color = "black", alpha = 0.6) +
+  stat_summary(fun = mean, geom = "line", color = "blue") +
+  stat_summary(fun.data = mean_cl_normal, geom = "ribbon", alpha = 0.2)
+
+
+```
+brm_model
+
+```{r}
+library(brms)
+
+brm(
+  bf(viability_prop ~ exp(-(retrieval_time_months / lambda)^1.3),
+     lambda ~ 1 + depth_cm * species + (1 | location/field_rep),
+     nl = TRUE),
+  data = all_data1 %>% filter(location == "Corpus Christi"),
+  family = Beta(),
+  prior = prior(normal(40, 10), class = "b", nlpar = "lambda"),
+  chains = 4,
+  iter = 4000,
+  backend = "cmdstanr",
+  control = list(adapt_delta = 0.95)
+) -> weibull_brm_model
+
+```
+
+
+
+```{r}
+
+weibull_brm_model %>%
+  add_fitted_draws(newdata = new_data, n = 100) %>%
+  mutate(.value = log(.value)) %>%
+  ggplot(aes(x = retrieval_time_months, y = .value)) +
+  geom_jitter(data = lubbock_run1, aes(y = viability_prop), color = "black", alpha = 0.6) +
+  stat_summary(fun = mean, geom = "line", color = "blue") +
+  stat_summary(fun.data = mean_cl_normal, geom = "ribbon", alpha = 0.2)
+```
+
+
+
+```{r}
+brm(
+  bf(viability_prop ~ exp(-(retrieval_time_months / lambda)^1.3),
+     lambda ~ 1,
+     nl = TRUE),
+  data = lubbock_run1,
+  family = weibull(link = "log", link_shape = "log"),
+  prior = prior(normal(10, 5), class = "b", nlpar = "lambda"),
+  chains = 2,
+  iter = 2000,
+  backend = "cmdstanr"
+) -> weibull_simple_model
+```
+
+
+```{r}
+
+weibull_simple_model %>%
+  add_fitted_draws(newdata = new_data, n = 100) %>%
+  mutate(.value = log(.value)) %>%
+  ggplot(aes(x = retrieval_time_months, y = .value)) +
+  geom_jitter(data = lubbock_run1, aes(y = viability_prop), color = "black", alpha = 0.6) +
+  stat_summary(fun = mean, geom = "line", color = "blue") +
+  stat_summary(fun.data = mean_cl_normal, geom = "ribbon", alpha = 0.2)
+```
+
+
+
+```{r}
+library(brms)
+
+weibull_simple_model_2 <- brm(
+  bf(viability_prop ~ exp(-(retrieval_time_months / lambda)^1.3),
+     lambda ~ 1,
+     nl = TRUE),
+  data = lubbock_run1,
+  family = weibull(link = "log", link_shape = "log"),
+  prior = prior(normal(10, 5), class = "b", nlpar = "lambda"),
+  chains = 2,
+  iter = 2000,
+  backend = "cmdstanr"
+)
+
+```
+
+
+
+```{r}
+weibull_simple_model_2 %>%
+  add_fitted_draws(newdata = new_data, n = 100) %>%
+  mutate(.value = log(.value)) %>%
+  ggplot(aes(x = retrieval_time_months, y = .value)) +
+  geom_jitter(data = lubbock_run1, aes(y = viability_prop), color = "black", alpha = 0.6) +
+  stat_summary(fun = mean, geom = "line", color = "blue") +
+  stat_summary(fun.data = mean_cl_normal, geom = "ribbon", alpha = 0.2)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

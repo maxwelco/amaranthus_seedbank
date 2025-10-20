@@ -115,8 +115,8 @@ mutate(number_seeds_excavated=200,
        dormancy_percent_in_excavated_seed = (number_dormant_seed_tz/number_seeds_excavated)*100,
        viable_seed_as_percent_of_original=100,
        dormancy_level_in_the_seedlot_percent=dormancy_percent_in_excavated_seed) %>% 
- mutate(viable_seed_as_percent_of_original = 100) %>% 
- dplyr::select(-n) -> at_zero
+  mutate(viable_seed_as_percent_of_original = 100) %>% 
+  dplyr::select(-n) -> at_zero
 ```
 
 
@@ -277,11 +277,7 @@ data1 %>%
 
 ```{r}
 all_data %>% 
-  ggplot(aes(x=retrieval_time_months, y=viable_seed_as_percent_of_original, 
-             color=species)) +
-  geom_point() +
-  geom_smooth() +
-  facet_grid(depth_cm~location)
+  filter(number_viable_seed > initial_viab)
 ```
 
 
