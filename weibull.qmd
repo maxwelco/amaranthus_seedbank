@@ -221,27 +221,41 @@ weibull_simple_model %>%
 
 
 
-```{r}
-library(brms)
 
-weibull_simple_model_2 <- brm(
-  bf(viability_prop ~ exp(-(retrieval_time_months / lambda)^1.3),
-     lambda ~ 1,
+
+```{r}
+lubbock_run1 <- lubbock_run1 %>%
+  filter(!is.na(viability_prop), !is.na(retrieval_time_months)) %>%
+  filter(retrieval_time_months > 0)
+
+```
+
+
+```{r}
+weibull_drc_style <- brm(
+  bf(viability_prop ~ d * exp(-exp(b * (log(retrieval_time_months) - e))),
+     b + d + e ~ 1,
      nl = TRUE),
   data = lubbock_run1,
   family = weibull(link = "log", link_shape = "log"),
-  prior = prior(normal(10, 5), class = "b", nlpar = "lambda"),
+  prior = c(
+    prior(normal(1, 0.5), class = "b", nlpar = "b"),
+    prior(normal(0.8, 0.2), class = "b", nlpar = "d"),
+    prior(normal(3, 1), class = "b", nlpar = "e")
+  ),
   chains = 2,
   iter = 2000,
-  backend = "cmdstanr"
-)
+  backend = "cmdstanr",
+  control = list(adapt_delta = 0.95)
+) -> weibull_drc_style
 
 ```
 
 
 
+
 ```{r}
-weibull_simple_model_2 %>%
+weibull_drc_style %>%
   add_fitted_draws(newdata = new_data, n = 100) %>%
   mutate(.value = log(.value)) %>%
   ggplot(aes(x = retrieval_time_months, y = .value)) +
@@ -249,13 +263,6 @@ weibull_simple_model_2 %>%
   stat_summary(fun = mean, geom = "line", color = "blue") +
   stat_summary(fun.data = mean_cl_normal, geom = "ribbon", alpha = 0.2)
 ```
-
-
-
-
-
-
-
 
 
 

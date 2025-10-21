@@ -253,19 +253,7 @@ phase_comb %>%
 ```
 
 
-```{r}
-#| warning: false
-phase2_dt %>% 
-  ggplot(aes(x=retrieval_time_months, y=viable_seed_as_percent_of_original,
-             color=species)) +
-  geom_point() +
-  facet_wrap(species~location~depth_cm) +
-  scale_x_continuous(breaks=c(0, 6, 12, 36)) +
-  geom_smooth()
 
-
-ggsave("test.png", width = 9, height = 7)
-```
 
 
 
@@ -282,7 +270,19 @@ all_data %>%
 
 
 
+```{r}
+#| warning: false
+all_data %>% 
+  ggplot(aes(x=retrieval_time_months, y=viable_seed_as_percent_of_original,
+             color=species)) +
+  geom_point() +
+  facet_wrap(species~location~run) +
+  scale_x_continuous(breaks=c(0, 6, 12, 36)) +
+  geom_smooth()
 
+
+ggsave("test.png", width = 9, height = 7)
+```
 
 
 

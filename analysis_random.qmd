@@ -1,0 +1,281 @@
+---
+title: "Seed viability"
+format: html
+editor: visual
+---
+
+```{r}
+library(brms)
+library(loo)
+```
+
+
+
+
+```{r}
+all_data %>% 
+  filter(location == "Lubbock") -> lub_dt
+```
+
+
+```{r}
+priors <- c(
+  prior(normal(1, 1), nlpar = "upper"),
+  prior(normal(0.1, 0.1), nlpar = "slope"),
+  prior(normal(12, 5), nlpar = "t50")
+)
+```
+
+```{r}
+full_model <- bf(
+  viability_prop ~ upper / (1 + exp(-slope * (retrieval_time_months - t50))),
+  upper + slope + t50 ~ species * depth_cm * location * run,
+  nl = TRUE
+)
+```
+
+```{r}
+full_m <- brm(
+  formula = full_model,
+  data = all_data,
+  prior = priors,
+  chains = 4,
+  cores = 4,
+  control = list(adapt_delta = 0.95),
+  backend = "rstan"
+)
+```
+
+
+```{r}
+simple_model <- bf(
+  viability_prop ~ upper / (1 + exp(-slope * (retrieval_time_months - t50))),
+  upper + slope + t50 ~ species + depth_cm + location + run,
+  nl = TRUE
+)
+```
+
+
+```{r}
+simple_m  <- brm(
+  formula = simple_model,
+  data = all_data,
+  prior = priors,
+  chains = 4,
+  cores = 4,
+  control = list(adapt_delta = 0.95),
+  backend = "rstan"
+)
+```
+
+```{r}
+loo_full <- add_criterion(full_m, "loo", moment_match = TRUE)
+loo_simple <- add_criterion(simple_m, "loo", moment_match = TRUE)
+
+loo_compare(loo_full, loo_simple)
+```
+
+
+
+```{r}
+red_model1 <- bf(
+  viability_prop ~ upper / (1 + exp(-slope * (retrieval_time_months - t50))),
+  upper + slope + t50 ~ species * depth_cm * location,
+  nl = TRUE
+)
+```
+
+
+```{r}
+red_m1  <- brm(
+  formula = simple_model,
+  data = all_data,
+  prior = priors,
+  chains = 4,
+  cores = 4,
+  control = list(adapt_delta = 0.95),
+  backend = "rstan"
+)
+```
+
+```{r}
+loo_red1 <- add_criterion(red_m1, "loo", moment_match = TRUE)
+
+loo_compare(loo_full, loo_red1)
+```
+
+```{r}
+red_model2 <- bf(
+  viability_prop ~ upper / (1 + exp(-slope * (retrieval_time_months - t50))),
+  upper + slope + t50 ~ species * depth_cm * run,
+  nl = TRUE
+)
+```
+
+
+```{r}
+red_m2  <- brm(
+  formula = simple_model,
+  data = all_data,
+  prior = priors,
+  chains = 4,
+  cores = 4,
+  control = list(adapt_delta = 0.95),
+  backend = "rstan"
+)
+```
+
+```{r}
+loo_red2 <- add_criterion(red_m2, "loo", moment_match = TRUE)
+
+loo_compare(loo_full, loo_red2)
+```
+
+
+```{r}
+red_model3 <- bf(
+  viability_prop ~ upper / (1 + exp(-slope * (retrieval_time_months - t50))),
+  upper + slope + t50 ~ species * location * run,
+  nl = TRUE
+)
+```
+
+
+```{r}
+red_m3  <- brm(
+  formula = simple_model,
+  data = all_data,
+  prior = priors,
+  chains = 4,
+  cores = 4,
+  control = list(adapt_delta = 0.95),
+  backend = "rstan"
+)
+```
+
+
+```{r}
+loo_red3 <- add_criterion(red_m3, "loo", moment_match = TRUE)
+
+loo_compare(loo_full, loo_red3)
+```
+
+
+```{r}
+red_model4 <- bf(
+  viability_prop ~ upper / (1 + exp(-slope * (retrieval_time_months - t50))),
+  upper + slope + t50 ~ depth_cm * location * run,
+  nl = TRUE
+)
+```
+
+
+```{r}
+red_m4  <- brm(
+  formula = simple_model,
+  data = all_data,
+  prior = priors,
+  chains = 4,
+  cores = 4,
+  control = list(adapt_delta = 0.95),
+  backend = "rstan"
+)
+```
+
+
+```{r}
+loo_red4 <- add_criterion(red_m4, "loo", moment_match = TRUE)
+
+loo_compare(loo_full, loo_red4)
+```
+
+
+
+
+
+
+
+
+
+```{r}
+summary(fit)
+```
+
+
+```{r}
+plot(fit)
+```
+
+
+```{r}
+conditional_effects(fit)
+```
+
+```{r}
+lub_dt$predicted <- fitted(fit)[, "Estimate"]
+```
+
+```{r}
+new_data <- expand.grid(
+  retrieval_time_months = seq(0, 60, by = 1),
+  species = c("Palmer amaranth", "waterhemp"),
+  depth_cm = c("5", "25"),
+  location = unique(all_data$location),
+  run = unique(all_data$run)
+)
+new_data <- subset(new_data, !(run == 2 & retrieval_time_months > 36))
+
+
+preds <- fitted(full_m, newdata = new_data, probs = c(0.025, 0.975))
+new_data$predicted <- preds[, "Estimate"]
+new_data$lower_CI <- preds[, "Q2.5"]
+new_data$upper_CI <- preds[, "Q97.5"]
+```
+
+
+
+```{r}
+ggplot(new_data, aes(x = retrieval_time_months, y = predicted*100)) +
+  geom_line(aes(color = depth_cm)) +
+  geom_jitter(data=all_data, aes(y = viability_prop*100, color = depth_cm), alpha = 0.1) +
+  geom_ribbon(aes(ymin = lower_CI*100, ymax = upper_CI*100, fill = depth_cm), alpha = 0.2) +
+  facet_grid(run~location~species) +
+  labs(
+    x = "Months Since Burial",
+    y = "Seed viability (%)"
+  ) +
+  theme_foundation() +
+  scale_y_continuous(limits = c(0, 120)) +
+  scale_color_brewer(palette = "Set1") +
+  theme(
+    legend.position = "bottom",
+    strip.background = element_rect(fill = "lightgray")
+  )
+
+ggsave("bayesian_reg.png", width=7, height=10)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
