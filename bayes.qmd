@@ -11,7 +11,7 @@ library(loo)
 
 ```{r}
 all_data1 %>% filter(location == "Lubbock") %>% 
-    filter(retrieval_time_months > 0) -> lub_test_data
+  mutate(retrieval_time_months = if_else(retrieval_time_months == 0, 0.01, retrieval_time_months)) -> lub_test_data
 ```
 
 ```{r}
@@ -22,9 +22,9 @@ weibull_drc_style <- brm(
   data = lub_test_data,
   family = weibull(link = "log", link_shape = "log"),
   prior = c(
-    prior(normal(1, 0.5), class = "b", nlpar = "b"),
-    prior(normal(0.8, 0.2), class = "b", nlpar = "d"),
-    prior(normal(3, 1), class = "b", nlpar = "e")
+    prior(normal(10, 2), class = "b", nlpar = "b"),
+    prior(normal(1, 0.01), class = "b", nlpar = "d"),
+    prior(normal(8, 1), class = "b", nlpar = "e")
   ),
   chains = 2,
   iter = 2000,
@@ -48,7 +48,7 @@ weibull_drc_style %>%
 ```
 
 ```{r}
-AIC(weibull_simple_model_2, weibull_drc_style)
+summary(weibull_simple_model_2)
 ```
 
 
