@@ -506,80 +506,12 @@ cat(sprintf("Pr(%s > %s): %.1f%%\n",
 
 
 
-```{r}
-group_ids <- names(ED_draws)
-
-comparison_results <- expand.grid(group1 = group_ids, group2 = group_ids) |>
-  dplyr::filter(group1 != group2) |>
-  dplyr::rowwise() |>
-  dplyr::mutate(
-    diff = list(ED_draws[[group1]]$ED90 - ED_draws[[group2]]$ED90),
-    mean_diff = mean(diff),
-    lower = quantile(diff, 0.025),
-    upper = quantile(diff, 0.975),
-    prob_gt = mean(diff > 0)
-  ) |>
-  dplyr::ungroup()
-comparison_results
-```
 
 
 
-```{r}
-ed_matrix <- do.call(cbind, lapply(ED_draws, function(x) x$ED90))
-colnames(ed_matrix) <- names(ED_draws)
-
-ranks <- t(apply(ed_matrix, 1, rank))
-mean_ranks <- colMeans(ranks)
-
-rank_summary <- data.frame(
-  group = colnames(ed_matrix),
-  mean_rank = mean_ranks,
-  rank_lower = apply(ranks, 2, function(x) quantile(x, 0.025)),
-  rank_upper = apply(ranks, 2, function(x) quantile(x, 0.975))
-)
-rank_summary
-```
 
 
-ED 50 Matrix
 
-```{r}
-ed50_matrix <- do.call(cbind, lapply(ED_draws, function(x) x$ED50))
-colnames(ed50_matrix) <- names(ED_draws)
-```
-
-```{r}
-ed50_ranks <- t(apply(ed50_matrix, 1, rank))
-```
-
-
-```{r}
-mean_ranks <- colMeans(ed50_ranks)
-
-rank_summary <- data.frame(
-  group = colnames(ed50_matrix),
-  mean_rank = mean_ranks,
-  rank_lower = apply(ed50_ranks, 2, function(x) quantile(x, 0.025)),
-  rank_upper = apply(ed50_ranks, 2, function(x) quantile(x, 0.975))
-)
-```
-
-```{r}
-rank_summary <- rank_summary[order(rank_summary$mean_rank, decreasing = TRUE), ]
-```
-
-
-```{r}
-rank_summary %>% 
-  mutate(group = case_when(
-    grepl("Palmer amaranth_5_", group) ~ paste0("Palmer amaranth (5 cm) - ", sub("Palmer amaranth_5_", "", group)),
-    grepl("Palmer amaranth_25_", group) ~ paste0("Palmer amaranth (25 cm) - ", sub("Palmer amaranth_25_", "", group)),
-    grepl("waterhemp_5_", group) ~ paste0("Waterhemp (5 cm) - ", sub("waterhemp_5_", "", group)),
-    grepl("waterhemp_25_", group) ~ paste0("Waterhemp (25 cm) - ", sub("waterhemp_25_", "", group)),
-    TRUE ~ group
-  )) -> rank_summary1
-```
 
 
 ```{r}
