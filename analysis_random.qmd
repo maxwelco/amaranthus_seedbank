@@ -12,11 +12,6 @@ library(loo)
 
 
 
-```{r}
-all_data %>% 
-  filter(location == "Lubbock") -> lub_dt
-```
-
 
 ```{r}
 priors <- c(
@@ -88,7 +83,7 @@ red_model1 <- bf(
 
 ```{r}
 red_m1  <- brm(
-  formula = simple_model,
+  formula = red_model1,
   data = all_data,
   prior = priors,
   chains = 4,
@@ -115,7 +110,7 @@ red_model2 <- bf(
 
 ```{r}
 red_m2  <- brm(
-  formula = simple_model,
+  formula = red_model2,
   data = all_data,
   prior = priors,
   chains = 4,
@@ -143,7 +138,7 @@ red_model3 <- bf(
 
 ```{r}
 red_m3  <- brm(
-  formula = simple_model,
+  formula = red_model3,
   data = all_data,
   prior = priors,
   chains = 4,
@@ -172,7 +167,7 @@ red_model4 <- bf(
 
 ```{r}
 red_m4  <- brm(
-  formula = simple_model,
+  formula = red_model4,
   data = all_data,
   prior = priors,
   chains = 4,
@@ -198,22 +193,22 @@ loo_compare(loo_full, loo_red4)
 
 
 ```{r}
-summary(fit)
+summary(loo_full)
 ```
 
 
 ```{r}
-plot(fit)
+plot(loo_full)
 ```
 
 
 ```{r}
-conditional_effects(fit)
+#| warning: false
+conditional_effects(full_m)
+
 ```
 
-```{r}
-lub_dt$predicted <- fitted(fit)[, "Estimate"]
-```
+
 
 ```{r}
 new_data <- expand.grid(
@@ -226,12 +221,15 @@ new_data <- expand.grid(
 new_data <- subset(new_data, !(run == 2 & retrieval_time_months > 36))
 
 
-preds <- fitted(full_m, newdata = new_data, probs = c(0.025, 0.975))
+preds <- fitted(full_m, newdata = new_data,  probs = c(0.025, 0.975))
 new_data$predicted <- preds[, "Estimate"]
 new_data$lower_CI <- preds[, "Q2.5"]
 new_data$upper_CI <- preds[, "Q97.5"]
 ```
 
+```{r}
+summary(full_m)$random$run
+```
 
 
 ```{r}
@@ -259,19 +257,223 @@ ggsave("bayesian_reg.png", width=7, height=10)
 
 
 
+```{r}
+# Extract posterior draws as a data frame
+post <- as_draws_df(full_m)
+names(post)
+```
+
+```{r}
+groups <- expand.grid(
+  species = c("Palmer amaranth", "waterhemp"),
+  depth_cm = c("5", "25"),
+  location = unique(all_data$location),
+  run = unique(all_data$run),
+  stringsAsFactors = FALSE
+)
+```
+
+
+```{r}
+safe_col <- function(post, colname) {
+  if (colname %in% colnames(post)) {
+    return(post[[colname]])
+  } else {
+    return(rep(0, nrow(post)))  # return a zero vector of correct length
+  }
+}
+```
+
+
+```{r}
+get_param <- function(post, group, param) {
+  base <- paste0("b_", param, "_Intercept")
+  terms <- c(base)
+  
+  # Main effects
+  if (group$species == "waterhemp") terms <- c(terms, paste0("b_", param, "_specieswaterhemp"))
+  if (group$depth_cm == "25") terms <- c(terms, paste0("b_", param, "_depth_cm25"))
+  terms <- c(terms, paste0("b_", param, "_location", group$location))
+  if (group$run == 2) terms <- c(terms, paste0("b_", param, "_run2"))
+  
+  # Interactions
+  if (group$species == "waterhemp" && group$depth_cm == "25") {
+    terms <- c(terms, paste0("b_", param, "_specieswaterhemp:depth_cm25"))
+  }
+  if (group$species == "waterhemp") {
+    terms <- c(terms, paste0("b_", param, "_specieswaterhemp:location", group$location))
+  }
+  if (group$species == "waterhemp" && group$run == 2) {
+    terms <- c(terms, paste0("b_", param, "_specieswaterhemp:run2"))
+  }
+  if (group$depth_cm == "25") {
+    terms <- c(terms, paste0("b_", param, "_depth_cm25:location", group$location))
+  }
+  if (group$depth_cm == "25" && group$run == 2) {
+    terms <- c(terms, paste0("b_", param, "_depth_cm25:run2"))
+  }
+  terms <- c(terms, paste0("b_", param, "_location", group$location, ":run2"))
+  if (group$species == "waterhemp" && group$depth_cm == "25") {
+    terms <- c(terms, paste0("b_", param, "_specieswaterhemp:depth_cm25:location", group$location))
+  }
+  if (group$species == "waterhemp" && group$depth_cm == "25" && group$run == 2) {
+    terms <- c(terms, paste0("b_", param, "_specieswaterhemp:depth_cm25:run2"))
+  }
+  if (group$species == "waterhemp") {
+    terms <- c(terms, paste0("b_", param, "_specieswaterhemp:location", group$location, ":run2"))
+  }
+  if (group$depth_cm == "25") {
+    terms <- c(terms, paste0("b_", param, "_depth_cm25:location", group$location, ":run2"))
+  }
+  if (group$species == "waterhemp" && group$depth_cm == "25") {
+    terms <- c(terms, paste0("b_", param, "_specieswaterhemp:depth_cm25:location", group$location, ":run2"))
+  }
+
+  # Sum safely
+  Reduce(`+`, lapply(terms, function(term) safe_col(post, term)))
+}
+
+```
+
+
+```{r}
+calc_ED <- function(p, t50, slope) {
+  # Only use draws with negative slope
+  valid <- slope < 0
+  t50 <- t50[valid]
+  slope <- slope[valid]
+  
+  ed <- t50 + (1 / slope) * log((1 / p) - 1)
+  return(ed)
+}
 
 
 
+results <- lapply(1:nrow(groups), function(i) {
+  g <- groups[i, ]
+  t50 <- get_param(post, g, "t50")
+  slope <- get_param(post, g, "slope")
+  ed90 <- calc_ED(0.9, t50, slope)
+  
+  data.frame(
+    species = g$species,
+    depth_cm = g$depth_cm,
+    location = g$location,
+    run = g$run,
+    ED90_mean = mean(ed90),
+    ED90_lower = quantile(ed90, 0.025),
+    ED90_upper = quantile(ed90, 0.975)
+  )
+})
+
+ED90_table <- do.call(rbind, results)
+```
 
 
+```{r}
+calc_ED_absolute <- function(y_target, t50, slope, upper) {
+  valid <- slope != 0 & upper > y_target & y_target > 0
+  t50 <- t50[valid]
+  slope <- slope[valid]
+  upper <- upper[valid]
+  
+  ed <- t50 - (1 / slope) * log((upper / y_target) - 1)
+  ed[!is.finite(ed)] <- NA
+  return(ed)
+}
+```
 
 
+```{r}
+results <- lapply(seq_len(nrow(groups)), function(i) {
+  group <- groups[i, , drop = TRUE]  # ensures group is a named list
+  
+  # Extract parameters for this group
+  t50 <- get_param(post, group, "t50")
+  slope <- get_param(post, group, "slope")
+  upper <- get_param(post, group, "upper")
+  
+  # Calculate EDx values for absolute viability thresholds
+  ed90 <- calc_ED_absolute(0.9, t50, slope, upper)
+  ed50 <- calc_ED_absolute(0.5, t50, slope, upper)
+  ed10 <- calc_ED_absolute(0.1, t50, slope, upper)
+  ed1 <- calc_ED_absolute(0.01, t50, slope, upper)
+
+# Return summary for this group
+  data.frame(
+    species = group$species,
+    depth_cm = group$depth_cm,
+    location = group$location,
+    run = group$run,
+    ED90_mean = mean(ed90),
+    ED90_lower = quantile(ed90, 0.025),
+    ED90_upper = quantile(ed90, 0.975),
+    ED50_mean = mean(ed50),
+    ED50_lower = quantile(ed50, 0.025),
+    ED50_upper = quantile(ed50, 0.975),
+    ED10_mean = mean(ed10),
+    ED10_lower = quantile(ed10, 0.025),
+    ED10_upper = quantile(ed10, 0.975),
+    ED1_mean = mean(ed1),
+    ED1_lower = quantile(ed1, 0.025),
+    ED1_upper = quantile(ed1, 0.975)
+  )
+})
+
+# Combine all results into one table
+(ED_table <- do.call(rbind, results))
+```
+
+```{r}
+library(ggplot2)
+
+ggplot(ED_table, aes(x = depth_cm, y = ED50_mean, color = species)) +
+  geom_point(position = position_dodge(width = 0.5)) +
+  geom_errorbar(aes(ymin = ED50_lower, ymax = ED50_upper), width = 0.2, position = position_dodge(width = 0.5)) +
+  facet_grid(location ~ run) +
+  labs(title = "ED50 across treatments", y = "Months", x = "Burial depth")
+```
 
 
+```{r}
+group1 <- groups[1, , drop = TRUE]
+group2 <- groups[2, , drop = TRUE]
+
+t50_1 <- get_param(post, group1, "t50")
+slope_1 <- get_param(post, group1, "slope")
+upper_1 <- get_param(post, group1, "upper")
+ed50_1 <- calc_ED_absolute(0.5, t50_1, slope_1, upper_1)
+
+t50_2 <- get_param(post, group2, "t50")
+slope_2 <- get_param(post, group2, "slope")
+upper_2 <- get_param(post, group2, "upper")
+ed50_2 <- calc_ED_absolute(0.5, t50_2, slope_2, upper_2)
+
+```
 
 
+```{r}
+ed50_diff <- ed50_1 - ed50_2
+```
 
 
+```{r}
+mean_diff <- mean(ed50_diff, na.rm = TRUE)
+ci_diff <- quantile(ed50_diff, c(0.025, 0.975), na.rm = TRUE)
+prob_positive <- mean(ed50_diff > 0, na.rm = TRUE)
+```
+
+
+```{r}
+df <- data.frame(
+  ed50 = c(ed50_1, ed50_2),
+  group = rep(c("Group 1", "Group 2"), each = length(ed50_1))
+)
+
+ggplot(df, aes(x = ed50, fill = group)) +
+  geom_density(alpha = 0.5) +
+  labs(title = "Posterior distribution of ED50", x = "ED50 (months)")
+```
 
 
 

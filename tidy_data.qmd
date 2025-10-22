@@ -259,13 +259,21 @@ phase_comb %>%
 
 ```{r}
 data1 %>% 
-  bind_rows(phase2_dt) -> all_data
+  bind_rows(phase2_dt) %>% 
+  mutate(viability_prop= viable_seed_as_percent_of_original / 100) %>% 
+  mutate(viability_prop = case_when(
+    viability_prop == 1 ~ 0.999,
+    viability_prop == 0 ~ 0.001,
+    TRUE ~ viability_prop
+  )) %>% 
+  mutate(field_rep = as_factor(field_rep)) %>% 
+  filter(!is.na(viability_prop)) -> all_data
 ```
 
 
 ```{r}
 all_data %>% 
-  filter(number_viable_seed > initial_viab)
+  count(species, run, depth_cm, location, field_rep)
 ```
 
 
