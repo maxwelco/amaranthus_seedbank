@@ -267,7 +267,16 @@ data1 %>%
     TRUE ~ viability_prop
   )) %>% 
   mutate(field_rep = as_factor(field_rep)) %>% 
-  filter(!is.na(viability_prop)) -> all_data
+  filter(!is.na(viability_prop)) %>% 
+  mutate(population = case_when(
+  species == "Palmer amaranth" & location == "Lubbock" ~ "PA-LBK",
+  species == "Palmer amaranth" & location == "College Station" ~ "PA-CS",
+  species == "Palmer amaranth" & location == "Corpus Christi" ~ "PA-CC",
+  species == "waterhemp" & location == "Lubbock" ~ "WH-LBK",
+  species == "waterhemp" & location == "College Station" ~ "WH-CS",
+  species == "waterhemp" & location == "Corpus Christi" ~ "WH-CC"
+  )) %>% 
+  mutate_if(is_character, as_factor) -> all_data
 ```
 
 
