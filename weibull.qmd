@@ -30,7 +30,7 @@ priors <- c(
 ```{r}
 full_model_f <- bf(
   viability_prop ~ upper / (1 + exp(-slope * (retrieval_time_months - t50))),
-  upper + slope + t50 ~ population * depth_cm,
+  upper + slope + t50 ~ species * depth_cm * location,
   nl = TRUE
 )
 ```
@@ -55,7 +55,7 @@ full_m_f <- brm(
 ```{r}
 simple_model_f <- bf(
   viability_prop ~ upper / (1 + exp(-slope * (retrieval_time_months - t50))),
-  upper + slope + t50 ~ population + depth_cm,
+  upper + slope + t50 ~ species + depth_cm + location,
   nl = TRUE
 )
 ```
@@ -76,9 +76,6 @@ simple_m_f  <- brm(
 
 
 
-```{r}
-loo_simple_f$criteria
-```
 
 
 ```{r}
@@ -90,22 +87,13 @@ loo_compare(loo_full_f, loo_simple_f)
 
 
 
-```{r}
-bayes_R2(loo_full_f)
-```
-
-
-```{r}
-loo(loo_full_f, loo_simple_f, loo_red1_f, loo_red2_f, loo_red3_f, loo_red4_f)
-```
-
 
 
 
 ```{r}
 red_model1_f <- bf(
   viability_prop ~ upper / (1 + exp(-slope * (retrieval_time_months - t50))),
-  upper + slope + t50 ~ population,
+  upper + slope + t50 ~ species * depth_cm,
   nl = TRUE
 )
 ```
@@ -127,14 +115,14 @@ red_m1_f  <- brm(
 ```{r}
 loo_red1_f <- add_criterion(red_m1_f, "loo", moment_match = TRUE)
 
-loo_compare(loo_simple_f, loo_red1_f)
+loo_compare(loo_full_f, loo_red1_f)
 ```
 
 
 ```{r}
 red_model2_f <- bf(
   viability_prop ~ upper / (1 + exp(-slope * (retrieval_time_months - t50))),
-  upper + slope + t50 ~ 1,
+  upper + slope + t50 ~ species * location,
   nl = TRUE
 )
 ```
@@ -156,15 +144,8 @@ red_m2_f  <- brm(
 ```{r}
 loo_red2_f <- add_criterion(red_m2_f, "loo", moment_match = TRUE)
 
-loo_compare(loo_red1_f, loo_red2_f)
+loo_compare(loo_full_f, loo_red2_f)
 ```
-
-
-
-
-
-
-
 
 ```{r}
 red_model3_f <- bf(
@@ -188,13 +169,11 @@ red_m3_f  <- brm(
 )
 ```
 
-
 ```{r}
 loo_red3_f <- add_criterion(red_m3_f, "loo", moment_match = TRUE)
 
 loo_compare(loo_red2_f, loo_red3_f)
 ```
-
 
 
 ```{r}
@@ -219,7 +198,6 @@ red_m4_f  <- brm(
 )
 ```
 
-
 ```{r}
 loo_red4_f <- add_criterion(red_m4_f, "loo", moment_match = TRUE)
 
@@ -227,33 +205,63 @@ loo_compare(loo_red2_f, loo_red4_f)
 ```
 
 
+
+
+
 ```{r}
 new_data <- expand.grid(
   retrieval_time_months = seq(0, 60, by = 1),
-  population = unique(all_data$population)
+  species = unique(all_data$species),
 #  depth_cm = unique(all_data$depth_cm),
-#  location = unique(all_data$location)
+  location = unique(all_data$location)
 )
 
-preds <- fitted(red_m1_f, newdata = new_data, probs = c(0.025, 0.975))
+preds <- fitted(red_m2_f, newdata = new_data, probs = c(0.025, 0.975))
 new_data$predicted <- preds[, "Estimate"]
 new_data$lower_CI <- preds[, "Q2.5"]
 new_data$upper_CI <- preds[, "Q97.5"]
 ```
 
 
+```{r}
+new_data %>% 
+  mutate(population = case_when(
+  species == "Palmer amaranth" & location == "Lubbock" ~ "PA-LBK",
+  species == "Palmer amaranth" & location == "College Station" ~ "PA-CS",
+  species == "Palmer amaranth" & location == "Corpus Christi" ~ "PA-CC",
+  species == "waterhemp" & location == "Lubbock" ~ "WH-LBK",
+  species == "waterhemp" & location == "College Station" ~ "WH-CS",
+  species == "waterhemp" & location == "Corpus Christi" ~ "WH-CC"
+  )) %>%
+  mutate(
+    population = factor(population,
+      levels = c("PA-LBK", "PA-CS", "PA-CC",
+                 "WH-LBK", "WH-CS", "WH-CC")
+    )
+  ) -> new_data1
+```
 
+```{r}
+pop_colors <- c(
+  "PA-LBK" = "#E41A1C",
+  "PA-CS"  = "#377EB8",
+  "PA-CC"  = "#4DAF4A",
+  "WH-LBK" = "#984EA3",
+  "WH-CS"  = "#FF7F00",
+  "WH-CC"  = "#A65628"
+)
+```
 
 
 ```{r}
-new_data %>% 
+new_data1 %>% 
   ggplot(aes(
   x = retrieval_time_months,
   y = predicted * 100,
   group = population,  # group aesthetics
   shape = population,
   color = population,
-#  linetype = group,
+  linetype = population,
   fill = population
 )) +
   geom_line(size = 1.2) +
@@ -272,8 +280,8 @@ new_data %>%
   scale_y_continuous(limits = c(0, 107), breaks = seq(0, 100, 25)) +
   scale_x_continuous(limits = c(0, 60), breaks = seq(0, 60, 12)) +
   scale_shape_manual(values = c(16, 17, 18, 15, 8, 3)) +
-  scale_color_brewer(palette = "Set1") +
-  scale_fill_brewer(palette = "Set1") +
+  scale_color_manual(values = pop_colors) +
+  scale_fill_manual(values = pop_colors) +
   theme_foundation() +
   theme(
     legend.background = element_blank(),
@@ -283,8 +291,15 @@ new_data %>%
     axis.title = element_blank(),
     axis.text = element_text(size = 12),
     strip.text = element_text(size = 12, face = "bold"),
-    legend.position = c(0.85, 0.85) 
-  ) -> fig_viab
+    legend.position = "bottom",
+    legend.direction = "horizontal"
+  ) + 
+  guides(
+  color = guide_legend(override.aes = list(shape = c(16, 17, 18, 15, 8, 3)), nrow = 1),
+  shape = "none",  # suppress separate shape legend
+  fill = "none",   # suppress separate fill legend
+  size = "none"    # suppress separate size legend
+) -> fig_viab
 
 
 ggsave("figures/seed_viability_2.png", width=6, height=6)
@@ -297,53 +312,57 @@ unique(all_data$population)
 
 ```{r}
 # Extract all posterior draws
-posterior_draws <- as_draws_df(red_m1_f)
+posterior_draws <- as_draws_df(red_m2_f)
 names(posterior_draws)
 ```
 
-```{r}
-# --- 1. Map population names to posterior draw suffixes ---
-pop_map <- c(
-  "PA-CC"  = "PAMCC",
-  "PA-LBK" = "PAMLBK",
-  "PA-CS"  = "PAMCS",
-  "WH-CS"  = "WHMCS",
-  "WH-CC"  = "WHMCC",
-  "WH-LBK" = "WHMLBK"
-)
-```
-
 
 ```{r}
-# --- 2. Function to extract parameter for a given population ---
-get_param_for_group <- function(draws_df, param, population) {
-  # Base intercept
+get_param_for_group <- function(draws_df, param, species, location) {
   base <- draws_df[[paste0("b_", param, "_Intercept")]]
-  
-  # Map population name
-  pop_suffix <- pop_map[population]
-  
-  # Construct term name
-  pop_term <- paste0("b_", param, "_population", pop_suffix)
-  
-  # If term exists, add it to intercept
-  if (pop_term %in% names(draws_df)) {
-    param_value <- base + draws_df[[pop_term]]
-  } else {
-    param_value <- base
+
+  # Reference levels
+  ref_species <- "Palmer amaranth"
+  ref_location <- "Corpus Christi"
+
+  # Term names in the posterior
+  sp_term <- paste0("b_", param, "_species", gsub(" ", "", species))
+  loc_term <- paste0("b_", param, "_location", gsub(" ", "", location))
+  inter_term <- paste0("b_", param, "_species", gsub(" ", "", species),
+                       ":location", gsub(" ", "", location))
+  inter_term_alt <- paste0("b_", param, "_location", gsub(" ", "", location),
+                           ":species", gsub(" ", "", species))
+
+  value <- base
+
+  # Add main effect if not reference
+  if (species != ref_species && sp_term %in% names(draws_df)) {
+    value <- value + draws_df[[sp_term]]
   }
-  
-  return(param_value)
+
+  if (location != ref_location && loc_term %in% names(draws_df)) {
+    value <- value + draws_df[[loc_term]]
+  }
+
+  # Add interaction term only if not the reference species
+  if (species != ref_species) {
+    if (inter_term %in% names(draws_df)) {
+      value <- value + draws_df[[inter_term]]
+    } else if (inter_term_alt %in% names(draws_df)) {
+      value <- value + draws_df[[inter_term_alt]]
+    }
+  }
+
+  return(value)
 }
 ```
 
 
 ```{r}
-# --- 3. Prepare population levels ---
+# --- 3. Prepare species × location combinations ---
 group_levels <- all_data %>%
-  distinct(population) %>%
-  arrange(population) %>%
-  pull(population)
+  distinct(species, location) %>%
+  arrange(species, location)
 ```
 
 
@@ -351,23 +370,24 @@ group_levels <- all_data %>%
 # --- 4. Set ET targets ---
 Y_targets <- c(ET1 = 0.01, ET20 = 0.20, ET50 = 0.5, ET80 = 0.8)
 
-# --- 5. Compute ETs by population ---
-et_by_group_all <- map_dfr(group_levels, function(pop) {
+# --- 5. Compute ETs by species × location ---
+et_by_group_all <- pmap_dfr(group_levels, function(species, location) {
   
-  # Extract posterior draws for this population
-  upper <- get_param_for_group(posterior_draws, "upper", pop)
-  slope <- get_param_for_group(posterior_draws, "slope", pop)
-  t50   <- get_param_for_group(posterior_draws, "t50", pop)
+  # Extract posterior draws for this species-location combination
+  upper <- get_param_for_group(posterior_draws, "upper", species, location)
+  slope <- get_param_for_group(posterior_draws, "slope", species, location)
+  t50   <- get_param_for_group(posterior_draws, "t50", species, location)
   
-  # Compute ET values
+  # Compute ET (effective time) for each Y target
   ET_mat <- sapply(Y_targets, function(Y_target) {
     t50 - (1 / slope) * log((upper / Y_target) - 1)
   })
   
-  # Summarize median and 95% CI
+  # Summarize posterior distribution: median and 95% CI
   map_dfr(seq_along(Y_targets), function(i) {
     tibble(
-      population = pop,
+      species = species,
+      location = location,
       ET_target = names(Y_targets)[i],
       median_ET = median(ET_mat[, i]),
       lower_CI = quantile(ET_mat[, i], 0.025),
@@ -376,94 +396,151 @@ et_by_group_all <- map_dfr(group_levels, function(pop) {
   })
 })
 
+
 # --- 6. View results ---
 et_by_group_all
 ```
 
 ```{r}
 et_by_group_all %>% 
-  filter(ET_target == "ET50") 
+  filter(ET_target == "ET1") 
 ```
 
 ```{r}
 fig_viab +
   geom_vline(data = et_by_group_all %>% 
-  filter(ET_target == "ET50",
-         population=="PA-CC"), aes(xintercept=median_ET))
+  mutate(population = case_when(
+  species == "Palmer amaranth" & location == "Lubbock" ~ "PA-LBK",
+  species == "Palmer amaranth" & location == "College Station" ~ "PA-CS",
+  species == "Palmer amaranth" & location == "Corpus Christi" ~ "PA-CC",
+  species == "waterhemp" & location == "Lubbock" ~ "WH-LBK",
+  species == "waterhemp" & location == "College Station" ~ "WH-CS",
+  species == "waterhemp" & location == "Corpus Christi" ~ "WH-CC"
+  )) %>%
+  mutate(
+    population = factor(population,
+      levels = c("PA-LBK", "PA-CS", "PA-CC",
+                 "WH-LBK", "WH-CS", "WH-CC")
+    )
+  ) %>% 
+  filter(ET_target == "ET80",
+         population=="PA-CS"), aes(xintercept=median_ET)) +
+  geom_hline(yintercept = 80)
 ```
 
 
-
-
 ```{r}
-# --- 1. Choose populations to compare ---
+# --- 1. Choose species × location combinations to compare ---
 # Example: compare Palmer amaranth at Lubbock vs College Station
-pop_a <- "PA-LBK"
-pop_b <- "PA-CS"
+species_a <- "palmeri"
+location_a <- "Lubbock"
+
+species_b <- "palmeri"
+location_b <- "CollegeStation"   # Use the same naming as in your model terms
 
 # Choose which ET target to compare ("ET1", "ET20", "ET50", "ET80")
 ET_to_compare <- "ET50"
+```
 
 
-# --- 2. Helper function to compute ET draws for a given population ---
-get_ET_draws <- function(population, Y_target) {
-  upper <- get_param_for_group(posterior_draws, "upper", population)
-  slope <- get_param_for_group(posterior_draws, "slope", population)
-  t50   <- get_param_for_group(posterior_draws, "t50", population)
+```{r}
+# --- 2. Helper function to compute ET draws for a given species × location ---
+get_ET_draws <- function(species, location, Y_target) {
+  upper <- get_param_for_group(posterior_draws, "upper", species, location)
+  slope <- get_param_for_group(posterior_draws, "slope", species, location)
+  t50   <- get_param_for_group(posterior_draws, "t50", species, location)
   
   t50 - (1 / slope) * log((upper / Y_target) - 1)
 }
 
 
-# --- 3. Compute posterior ET draws for both populations ---
-ET_a <- get_ET_draws(pop_a, Y_targets[ET_to_compare])
-ET_b <- get_ET_draws(pop_b, Y_targets[ET_to_compare])
+
+# --- 3. Compute posterior ET draws for both combinations ---
+ET_a <- get_ET_draws(species_a, location_a, Y_targets[ET_to_compare])
+ET_b <- get_ET_draws(species_b, location_b, Y_targets[ET_to_compare])
 
 
-# --- 4. Compare ET draws ---
+# --- 4. Compare posterior ET draws ---
 diff <- ET_a - ET_b
 mean_diff <- mean(diff)
 ci_diff <- quantile(diff, c(0.025, 0.975))
 prob_a_gt_b <- mean(diff > 0)
 
 
+
 # --- 5. Report results ---
-cat(sprintf("Comparison at %s:\n%s vs %s\n", 
-            ET_to_compare, pop_a, pop_b))
+cat(sprintf("Comparison at %s:\n%s (%s) vs %s (%s)\n", 
+            ET_to_compare, species_a, location_a, species_b, location_b))
 cat(sprintf("Mean difference: %.2f\n", mean_diff))
 cat(sprintf("95%% credible interval: [%.2f, %.2f]\n", ci_diff[1], ci_diff[2]))
-cat(sprintf("Pr(%s > %s): %.1f%%\n", 
-            pop_a, pop_b, 100 * prob_a_gt_b))
+cat(sprintf("Pr(%s_%s > %s_%s): %.1f%%\n", 
+            species_a, location_a, species_b, location_b, 100 * prob_a_gt_b))
 ```
 
 ```{r}
-# Build full posterior ET draws (not just summaries)
-et_draws_long <- map_dfr(unique(all_data$population), function(pop) {
-  upper <- get_param_for_group(posterior_draws, "upper", pop)
-  slope <- get_param_for_group(posterior_draws, "slope", pop)
-  t50   <- get_param_for_group(posterior_draws, "t50",   pop)
-  
-  ET_mat <- sapply(Y_targets, function(Y_target) {
-    t50 - (1 / slope) * log((upper / Y_target) - 1)
+# --- Build full posterior ET draws (species × location) ---
+et_draws_long <- all_data %>%
+  distinct(species, location) %>%
+  arrange(species, location) %>%
+  pmap_dfr(function(species, location) {
+    
+    # Extract posterior parameter draws
+    upper <- get_param_for_group(posterior_draws, "upper", species, location)
+    slope <- get_param_for_group(posterior_draws, "slope", species, location)
+    t50   <- get_param_for_group(posterior_draws, "t50",   species, location)
+    
+    # Compute ETs for all Y targets
+    ET_mat <- sapply(Y_targets, function(Y_target) {
+      t50 - (1 / slope) * log((upper / Y_target) - 1)
+    })
+    
+    # Return as long tibble
+    tibble(
+      species = species,
+      location = location,
+      draw = seq_along(upper),
+      ET1 = ET_mat[, "ET1"],
+      ET20 = ET_mat[, "ET20"],
+      ET50 = ET_mat[, "ET50"],
+      ET80 = ET_mat[, "ET80"]
+    ) %>%
+      pivot_longer(
+        cols = starts_with("ET"),
+        names_to = "ET_target",
+        values_to = "ET_value"
+      )
   })
-  
-  tibble(
-    population = pop,
-    draw = seq_along(upper),
-    ET1 = ET_mat[, "ET1"],
-    ET20 = ET_mat[, "ET20"],
-    ET50 = ET_mat[, "ET50"],
-    ET80 = ET_mat[, "ET80"]
-  ) %>%
-    pivot_longer(cols = starts_with("ET"), names_to = "ET_target", values_to = "ET_value")
-})
-
 ```
 
 
+```{r}
+et_draws_long %>%
+  group_by(species, location, ET_target) %>% 
+  filter(ET_target == "ET80") %>%
+  summarise(min_ET = min(ET_value)) 
+```
 
 ```{r}
 et_draws_long %>% 
+  mutate(population = case_when(
+  species == "Palmer amaranth" & location == "Lubbock" ~ "PA-LBK",
+  species == "Palmer amaranth" & location == "College Station" ~ "PA-CS",
+  species == "Palmer amaranth" & location == "Corpus Christi" ~ "PA-CC",
+  species == "waterhemp" & location == "Lubbock" ~ "WH-LBK",
+  species == "waterhemp" & location == "College Station" ~ "WH-CS",
+  species == "waterhemp" & location == "Corpus Christi" ~ "WH-CC"
+  )) %>%
+  mutate(
+    population = factor(population,
+      levels = c("PA-LBK", "PA-CS", "PA-CC",
+                 "WH-LBK", "WH-CS", "WH-CC")
+    )
+  ) -> et_draws_long1
+```
+
+
+```{r}
+et_draws_long1 %>% 
   filter(ET_target == "ET80") %>%
   mutate(group = factor(population, levels = c("PA-CC", "PA-CS", "PA-LBK", "WH-CC", "WH-CS", "WH-LBK"))) %>%
   ggplot(aes(x = reorder(group, ET_value, FUN = median), y = ET_value, fill = group)) +
@@ -475,22 +552,22 @@ et_draws_long %>%
     y = "Months after burial for 80% seed viability (ET80)"
   ) +
   theme_foundation() +
-  scale_fill_brewer(palette = "Set1") +
+  scale_color_manual(values = pop_colors) +
+  scale_fill_manual(values = pop_colors) +
   scale_y_continuous(limits=c(0,8)) +
   theme(
     axis.text = element_text(size = 11),
     axis.title = element_text(size = 12),
     legend.position = "none"
-  )
+  ) -> fig_et_80
 
 ggsave("figures/et80_violin_plot.png", width = 6, height = 5)
-
 ```
 
 
 
 ```{r}
-et_draws_long %>% 
+et_draws_long1 %>% 
   filter(ET_target == "ET50") %>%
   mutate(group = factor(population, levels = c("PA-CC", "PA-CS", "PA-LBK", "WH-CC", "WH-CS", "WH-LBK"))) %>%
   ggplot(aes(x = reorder(group, ET_value, FUN = median), y = ET_value, fill = group)) +
@@ -503,12 +580,12 @@ et_draws_long %>%
   ) +
   theme_foundation() +
   scale_fill_brewer(palette = "Set1") +
-  scale_y_continuous(limits = c(0, 12), breaks = seq(0, 12, 3)) +
+  scale_y_continuous(limits = c(0, 10), breaks = seq(0, 10, 2)) +
   theme(
     axis.text = element_text(size = 11),
     axis.title = element_text(size = 12),
     legend.position = "none"
-  )
+  ) -> fig_et_50
 
 ggsave("figures/et50_violin_plot.png", width = 6, height = 5)
 
@@ -519,7 +596,7 @@ ggsave("figures/et50_violin_plot.png", width = 6, height = 5)
 
 
 ```{r}
-et_draws_long %>% 
+et_draws_long1 %>% 
   filter(ET_target == "ET1") %>%
   mutate(group = factor(population, levels = c("PA-CC", "PA-CS", "PA-LBK", "WH-CC", "WH-CS", "WH-LBK"))) %>%
   ggplot(aes(x = reorder(group, ET_value, FUN = median), y = ET_value, fill = group)) +
@@ -537,7 +614,7 @@ et_draws_long %>%
     axis.text = element_text(size = 11),
     axis.title = element_text(size = 12),
     legend.position = "none"
-  )
+  ) -> fig_et_1
 
 ggsave("figures/et1_violin_plot.png", width = 6, height = 5)
 ```
@@ -546,7 +623,7 @@ ggsave("figures/et1_violin_plot.png", width = 6, height = 5)
 
 ```{r}
 # --- Filter for ET80 draws and prepare data ---
-et80_wide <- et_draws_long %>%
+et80_wide <- et_draws_long1 %>%
   filter(ET_target == "ET80") %>%
   mutate(group = population) %>%
   dplyr::select(group, ET_value)
@@ -601,6 +678,7 @@ ggplot(heatmap_data80, aes(x = Group2, y = Group1)) +
     low = "#d73027", mid = "white", high = "#1a9850",
     midpoint = 0.5, limits = c(0, 1)
   ) +
+  geom_text(aes(label=round(Pr_G1_gt_G2,2)), size = 2.8, color = "#333333") +
   scale_size_continuous(range = c(5, 9), limits = c(0, 1)) +
   guides(
     color = guide_legend(title = "Pr(G1 > G2)"),
@@ -609,13 +687,14 @@ ggplot(heatmap_data80, aes(x = Group2, y = Group1)) +
   theme_foundation() +
   theme(
     axis.text.x = element_text(),
-    axis.text = element_text(size = 10),
-    axis.title = element_text(size = 12)
+    legend.position = "none",
+    axis.text = element_text(size = 11),
+    axis.title = element_text(size = 12),
   ) +
   labs(
-    x = "Population compared against",
-    y = "Population being evaluated"
-  )
+    x = "Group compared against (ET80)",
+    y = "Group being evaluated (ET80)"
+  ) -> fig_et_80_pair
 
 ggsave("figures/et80_pairwise_heatmap.png", width = 7, height = 6)
 ```
@@ -623,35 +702,20 @@ ggsave("figures/et80_pairwise_heatmap.png", width = 7, height = 6)
 
 
 
-
-
-
-
-
-
-
 50% pairwise comparison heatmap
 
 ```{r}
-# Add group label
-ed50_wide <- ed_draws_long %>%
-  filter(ET_target == "ED50") %>%
-#  mutate(group = paste0(species, " - ", location)) %>%
-  mutate(group = case_when(
-  species == "Palmer amaranth" & location == "Lubbock" ~ "PA-LBK",
-  species == "Palmer amaranth" & location == "College Station" ~ "PA-CS",
-  species == "Palmer amaranth" & location == "Corpus Christi" ~ "PA-CC",
-  species == "waterhemp" & location == "Lubbock" ~ "WH-LBK",
-  species == "waterhemp" & location == "College Station" ~ "WH-CS",
-  species == "waterhemp" & location == "Corpus Christi" ~ "WH-CC"
-  )) %>% 
-  dplyr::select(group, ET_value)  # If you have posterior draws, use those instead of median_E
+# --- Filter for ET50 draws and prepare data ---
+et50_wide <- et_draws_long1 %>%
+  filter(ET_target == "ET50") %>%
+  mutate(group = population) %>%
+  dplyr::select(group, ET_value)
 ```
 
 
 ```{r}
-# Nest by group and pivot to wide format
-ed50_matrix <- ed50_wide %>%
+# --- Nest by group and pivot to wide matrix ---
+et50_matrix <- et50_wide %>%
   group_by(group) %>%
   summarise(draws = list(ET_value), .groups = "drop") %>%
   pivot_wider(names_from = group, values_from = draws) %>%
@@ -659,19 +723,24 @@ ed50_matrix <- ed50_wide %>%
   as.data.frame()
 ```
 
+
 ```{r}
-group_ids <- colnames(ed50_matrix)
+# --- Compute pairwise probabilities ---
+group_ids50 <- colnames(et50_matrix)
 
-pairwise_probs <- matrix(NA, nrow = length(group_ids), ncol = length(group_ids),
-                         dimnames = list(group_ids, group_ids))
+pairwise_probs50 <- matrix(NA,
+  nrow = length(group_ids50),
+  ncol = length(group_ids50),
+  dimnames = list(group_ids50, group_ids50)
+)
 
-for (i in seq_along(group_ids)) {
-  for (j in seq_along(group_ids)) {
+for (i in seq_along(group_ids50)) {
+  for (j in seq_along(group_ids50)) {
     if (i != j) {
-      diff <- ed50_matrix[[i]] - ed50_matrix[[j]]
-      pairwise_probs[i, j] <- mean(diff > 0)
+      diff <- et50_matrix[[i]] - et50_matrix[[j]]
+      pairwise_probs50[i, j] <- mean(diff > 0)
     } else {
-      pairwise_probs[i, j] <- NA
+      pairwise_probs50[i, j] <- NA
     }
   }
 }
@@ -679,29 +748,21 @@ for (i in seq_along(group_ids)) {
 
 
 ```{r}
-heatmap_data <- melt(pairwise_probs, varnames = c("Group1", "Group2"), value.name = "Pr_G1_gt_G2")
+# --- Convert to long format for plotting ---
+heatmap_data50 <- melt(pairwise_probs50, varnames = c("Group1", "Group2"), value.name = "Pr_G1_gt_G2")
 ```
 
 
 ```{r}
-heatmap_data %>% 
-  ggplot(aes(x = Group2, y = Group1)) +
-  geom_point(
-    aes(color = Pr_G1_gt_G2, size = Pr_G1_gt_G2),
-    shape = 16
-  ) +
-#  geom_text(
-#    aes(label = sprintf("%.2f", Pr_G1_gt_G2)),
-#    size = 3.5,
-#    vjust = -0.8
- # ) +
+# --- Create heatmap plot ---
+ggplot(heatmap_data50, aes(x = Group2, y = Group1)) +
+  geom_point(aes(color = Pr_G1_gt_G2, size = Pr_G1_gt_G2), shape = 16) +
   scale_color_gradient2(
     low = "#d73027", mid = "white", high = "#1a9850",
     midpoint = 0.5, limits = c(0, 1)
   ) +
-  scale_size_continuous(
-    range = c(5, 9), limits = c(0, 1)
-  ) +
+  geom_text(aes(label=round(Pr_G1_gt_G2,2)), size = 2.8, color = "#333333") +
+  scale_size_continuous(range = c(5, 9), limits = c(0, 1)) +
   guides(
     color = guide_legend(title = "Pr(G1 > G2)"),
     size = guide_legend(title = "Pr(G1 > G2)")
@@ -709,18 +770,16 @@ heatmap_data %>%
   theme_foundation() +
   theme(
     axis.text.x = element_text(),
-    axis.text = element_text(size = 10)
+    axis.text = element_text(size = 11),
+    axis.title = element_text(size = 12),
+    legend.position = "bottom"
   ) +
   labs(
-    title = "",
-    x = "Treatment compared against",
-    y = "Treatment being evaluated"
-  )
+    x = "Group compared against (ET50)",
+    y = "Group being evaluated (ET50)"
+  ) -> fig_et_50_pair
 
-
-
-
-ggsave("figures/ed50_pairwise_heatmap.png", width = 7, height = 6)
+ggsave("figures/et50_pairwise_heatmap.png", width = 7, height = 6)
 ```
 
 
@@ -733,25 +792,17 @@ ggsave("figures/ed50_pairwise_heatmap.png", width = 7, height = 6)
 1% pairwise comparison heatmap
 
 ```{r}
-# Add group label
-ed1_wide <- ed_draws_long %>%
-  filter(ET_target == "ED1") %>%
-#  mutate(group = paste0(species, " - ", location)) %>%
-  mutate(group = case_when(
-  species == "Palmer amaranth" & location == "Lubbock" ~ "PA-LBK",
-  species == "Palmer amaranth" & location == "College Station" ~ "PA-CS",
-  species == "Palmer amaranth" & location == "Corpus Christi" ~ "PA-CC",
-  species == "waterhemp" & location == "Lubbock" ~ "WH-LBK",
-  species == "waterhemp" & location == "College Station" ~ "WH-CS",
-  species == "waterhemp" & location == "Corpus Christi" ~ "WH-CC"
-  )) %>% 
-  dplyr::select(group, ET_value)  # If you have posterior draws, use those instead of median_E
+# --- Filter for ET50 draws and prepare data ---
+et1_wide <- et_draws_long1 %>%
+  filter(ET_target == "ET1") %>%
+  mutate(group = population) %>%
+  dplyr::select(group, ET_value)
 ```
 
 
 ```{r}
-# Nest by group and pivot to wide format
-ed1_matrix <- ed1_wide %>%
+# --- Nest by group and pivot to wide matrix ---
+et1_matrix <- et1_wide %>%
   group_by(group) %>%
   summarise(draws = list(ET_value), .groups = "drop") %>%
   pivot_wider(names_from = group, values_from = draws) %>%
@@ -759,16 +810,21 @@ ed1_matrix <- ed1_wide %>%
   as.data.frame()
 ```
 
-```{r}
-group_ids1 <- colnames(ed1_matrix)
 
-pairwise_probs1 <- matrix(NA, nrow = length(group_ids1), ncol = length(group_ids1),
-                         dimnames = list(group_ids1, group_ids1))
+```{r}
+# --- Compute pairwise probabilities ---
+group_ids1 <- colnames(et1_matrix)
+
+pairwise_probs1 <- matrix(NA,
+  nrow = length(group_ids1),
+  ncol = length(group_ids1),
+  dimnames = list(group_ids1, group_ids1)
+)
 
 for (i in seq_along(group_ids1)) {
   for (j in seq_along(group_ids1)) {
     if (i != j) {
-      diff <- ed1_matrix[[i]] - ed1_matrix[[j]]
+      diff <- et1_matrix[[i]] - et1_matrix[[j]]
       pairwise_probs1[i, j] <- mean(diff > 0)
     } else {
       pairwise_probs1[i, j] <- NA
@@ -779,29 +835,22 @@ for (i in seq_along(group_ids1)) {
 
 
 ```{r}
+# --- Convert to long format for plotting ---
 heatmap_data1 <- melt(pairwise_probs1, varnames = c("Group1", "Group2"), value.name = "Pr_G1_gt_G2")
 ```
 
 
 ```{r}
+# --- Create heatmap plot ---
 heatmap_data1 %>% 
   ggplot(aes(x = Group2, y = Group1)) +
-  geom_point(
-    aes(color = Pr_G1_gt_G2, size = Pr_G1_gt_G2),
-    shape = 16
-  ) +
-#  geom_text(
-#    aes(label = sprintf("%.2f", Pr_G1_gt_G2)),
-#    size = 3.5,
-#    vjust = -0.8
- # ) +
+  geom_point(aes(color = Pr_G1_gt_G2, size = Pr_G1_gt_G2), shape = 16) +
   scale_color_gradient2(
     low = "#d73027", mid = "white", high = "#1a9850",
     midpoint = 0.5, limits = c(0, 1)
   ) +
-  scale_size_continuous(
-    range = c(5, 9), limits = c(0, 1)
-  ) +
+  geom_text(aes(label=round(Pr_G1_gt_G2,2)), size = 2.7, color = "#333333") +
+  scale_size_continuous(range = c(5, 9), limits = c(0, 1)) +
   guides(
     color = guide_legend(title = "Pr(G1 > G2)"),
     size = guide_legend(title = "Pr(G1 > G2)")
@@ -809,28 +858,36 @@ heatmap_data1 %>%
   theme_foundation() +
   theme(
     axis.text.x = element_text(),
-    axis.text = element_text(size = 10)
+    axis.text = element_text(size = 11),
+    axis.title = element_text(size = 12),   
+    legend.position = "none",
   ) +
   labs(
-    title = "",
-    x = "Treatment compared against",
-    y = "Treatment being evaluated"
-  )
+    x = "Group compared against (ET1)",
+    y = "Group being evaluated (ET1)"
+  ) -> fig_et_1_pair
 
-
-
-
-ggsave("figures/ed1_pairwise_heatmap.png", width = 7, height = 6)
+ggsave("figures/et1_pairwise_heatmap.png", width = 7, height = 6)
 ```
 
 
 
 
+```{r}
+library(patchwork)
+```
 
 
+```{r}
+#| warning: false
+
+(fig_et_80 + fig_et_50 + fig_et_1) /
+  (fig_et_80_pair + fig_et_50_pair + fig_et_1_pair) +
+  plot_annotation(tag_levels = "A")
 
 
-
+ggsave("figures/Final_figure.png", width = 15, height = 9)
+```
 
 
 
