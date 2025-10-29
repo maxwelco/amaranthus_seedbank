@@ -579,7 +579,8 @@ et_draws_long1 %>%
     y = "Months after burial for 50% seed viability (ET50)"
   ) +
   theme_foundation() +
-  scale_fill_brewer(palette = "Set1") +
+  scale_color_manual(values = pop_colors) +
+  scale_fill_manual(values = pop_colors) +
   scale_y_continuous(limits = c(0, 10), breaks = seq(0, 10, 2)) +
   theme(
     axis.text = element_text(size = 11),
@@ -608,7 +609,8 @@ et_draws_long1 %>%
     y = "Months after burial for 1% seed viability (ET1)"
   ) +
   theme_foundation() +
-  scale_fill_brewer(palette = "Set1") +
+  scale_color_manual(values = pop_colors) +
+  scale_fill_manual(values = pop_colors) +
   scale_y_continuous(limits = c(0, 50), breaks = seq(0, 50, 10)) +
   theme(
     axis.text = element_text(size = 11),
