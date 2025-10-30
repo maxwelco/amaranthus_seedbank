@@ -79,21 +79,56 @@ comb_weather %>%
 ```
 
 ```{r}
+# Step 1: Compute full-period cumulative rainfall
+comb_weather1 <- comb_weather %>%
+  mutate(month = as_factor(month(date))) %>%
+  arrange(location, date) %>%
+  group_by(location) %>%
+  mutate(cum_rain = cumsum(prcp_mm_day))
+
+# Step 2: Compute filtered cumulative rainfall starting at 0 on 2018-10-15
+cum_filtered <- comb_weather1 %>%
+  filter(date >= as.Date("2018-10-15") & date <= as.Date("2021-10-15")) %>%
+  arrange(location, date) %>%
+  group_by(location) %>%
+  mutate(cum_rain_filtered = cumsum(prcp_mm_day)) %>%
+  dplyr::select(location, date, cum_rain_filtered)
+
+# Step 3: Join filtered cumsum back to full dataset
+comb_weather1 <- comb_weather1 %>%
+  left_join(cum_filtered, by = c("location", "date"))
+```
+
+
+
+
+
+```{r}
 comb_weather1 %>% 
   filter(date %in% c(as.Date("2016-04-01"), # 0
                      as.Date("2016-10-01"), # 6
                      as.Date("2017-04-01"), # 12
                      as.Date("2018-04-01"), # 24
+                     as.Date("2018-10-15"), # 0
                      as.Date("2019-04-01"), # 36
+                     as.Date("2019-04-15"), # 6
+                     as.Date("2019-10-15"), # 12
                      as.Date("2020-04-01"), # 48
-                     as.Date("2021-04-01") # 60
+                     as.Date("2020-10-15"), # 24
+                     as.Date("2021-04-01"), # 60
+                     as.Date("2021-10-15") # 36
                      )) %>% 
   mutate(retrival_time = case_when(
     date == as.Date("2016-04-01") ~ "0",
+    date == as.Date("2018-10-15") ~ "0",
     date == as.Date("2016-10-01") ~ "6",
+    date == as.Date("2019-04-15") ~ "6",
     date == as.Date("2017-04-01") ~ "12",
+    date == as.Date("2019-10-15") ~ "12",
     date == as.Date("2018-04-01") ~ "24",
+    date == as.Date("2020-10-15") ~ "24",
     date == as.Date("2019-04-01") ~ "36",
+    date == as.Date("2021-10-15") ~ "36",
     date == as.Date("2020-04-01") ~ "48",
     date == as.Date("2021-04-01") ~ "60",
     TRUE ~ "NA"
