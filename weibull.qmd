@@ -82,9 +82,13 @@ simple_m_f  <- brm(
 loo_full_f <- add_criterion(full_m_f, "loo", moment_match = TRUE)
 loo_simple_f <- add_criterion(simple_m_f, "loo", moment_match = TRUE)
 
-loo_compare(loo_full_f, loo_simple_f)
+loo_compare(loo_full_f, loo_simple_f$
 ```
 
+```{r}
+loo_full_f$criteria
+loo_simple_f$criteria
+```
 
 
 
@@ -118,6 +122,11 @@ loo_red1_f <- add_criterion(red_m1_f, "loo", moment_match = TRUE)
 loo_compare(loo_full_f, loo_red1_f)
 ```
 
+```{r}
+loo_red1_f$criteria
+```
+
+
 
 ```{r}
 red_model2_f <- bf(
@@ -146,6 +155,12 @@ loo_red2_f <- add_criterion(red_m2_f, "loo", moment_match = TRUE)
 
 loo_compare(loo_full_f, loo_red2_f)
 ```
+```{r}
+loo_red2_f$criteria
+```
+
+
+
 
 ```{r}
 red_model3_f <- bf(
@@ -173,6 +188,10 @@ red_m3_f  <- brm(
 loo_red3_f <- add_criterion(red_m3_f, "loo", moment_match = TRUE)
 
 loo_compare(loo_red2_f, loo_red3_f)
+```
+
+```{r}
+loo_red3_f$criteria
 ```
 
 
@@ -205,7 +224,9 @@ loo_compare(loo_red2_f, loo_red4_f)
 ```
 
 
-
+```{r}
+loo_red3_f$criteria
+```
 
 
 ```{r}
@@ -516,8 +537,8 @@ et_draws_long <- all_data %>%
 ```{r}
 et_draws_long %>%
   group_by(species, location, ET_target) %>% 
-  filter(ET_target == "ET80") %>%
-  summarise(min_ET = min(ET_value)) 
+  filter(ET_target == "ET1") %>%
+  summarise(min_ET = max(ET_value)) 
 ```
 
 ```{r}
@@ -554,7 +575,7 @@ et_draws_long1 %>%
   theme_foundation() +
   scale_color_manual(values = pop_colors) +
   scale_fill_manual(values = pop_colors) +
-  scale_y_continuous(limits=c(0,8)) +
+  scale_y_continuous(limits = c(0, 10), breaks = seq(0, 10, 2)) +
   theme(
     axis.text = element_text(size = 11),
     axis.title = element_text(size = 12),
@@ -880,17 +901,25 @@ library(patchwork)
 ```
 
 
-```{r}
-#| warning: false
 
-(fig_et_80 + fig_et_50 + fig_et_1) /
-  (fig_et_80_pair + fig_et_50_pair + fig_et_1_pair) +
+
+
+```{r}
+# Create individual columns
+col1 <- fig_et_80 / fig_et_80_pair
+col2 <- fig_et_50 / fig_et_50_pair
+col3 <- fig_et_1 / fig_et_1_pair
+
+# Combine columns side by side and apply annotation
+final_plot <- (col1 | col2 | col3) +
   plot_annotation(tag_levels = "A")
 
+# Save the plot
+ggsave("figures/Final_figure.png", plot = final_plot, width = 15, height = 9)
 
-ggsave("figures/Final_figure.png", width = 15, height = 9)
+
+
 ```
-
 
 
 

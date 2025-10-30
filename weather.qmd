@@ -31,6 +31,9 @@ download_daymet(site = "Lubbock Farm",
                 end = 2021,
                 internal = TRUE) -> w_lub
 ```
+
+
+
 ```{r}
 w_cs$data %>% 
   janitor::clean_names() %>% 
@@ -57,11 +60,6 @@ w_cs1 %>%
   filter(date >= "2016-04-01" & date <= "2021-11-01") -> comb_weather
 ```
 
-
-```{r}
-comb_weather %>% 
-
-```
 
 
 
@@ -104,17 +102,27 @@ comb_weather1 %>%
            color = "purple") +
   facet_grid(~location) +
   theme_foundation() +
+  labs(y = "Cumulative precipitation (mm") + 
   scale_y_continuous(limits = c(0, 7500), breaks = c(0,1500,3000,4500, 6000, 7500)) +
   labs(x = "", y="") +
-  theme(axis.text.x = element_text(angle = 45),
+  theme(axis.text.x = element_text(angle = 0),
         strip.text = element_text(size=12, face="bold")) -> fig_wea
+```
+
+```{r}
+library(ggrepel)
 ```
 
 
 ```{r}
 fig_wea +
   geom_point(data = retriv_1, mapping = aes(x=date, y=cum_rain), 
-             color = "red", size = 5)
+             color = "red", size = 3) +
+  geom_text_repel(data = retriv_1 %>% filter(year=="2021"),
+            mapping=aes(x=date, y= cum_rain, 
+                        label=round(cum_rain,0)),
+            box.padding = 0.7, , max.overlaps = 10
+            )
 
 ggsave("figures/prec.png", width = 10, height = 5)
 ```
