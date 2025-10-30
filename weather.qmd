@@ -87,7 +87,17 @@ comb_weather1 %>%
                      as.Date("2019-04-01"), # 36
                      as.Date("2020-04-01"), # 48
                      as.Date("2021-04-01") # 60
-                     )) -> retriv_1
+                     )) %>% 
+  mutate(retrival_time = case_when(
+    date == as.Date("2016-04-01") ~ "0",
+    date == as.Date("2016-10-01") ~ "6",
+    date == as.Date("2017-04-01") ~ "12",
+    date == as.Date("2018-04-01") ~ "24",
+    date == as.Date("2019-04-01") ~ "36",
+    date == as.Date("2020-04-01") ~ "48",
+    date == as.Date("2021-04-01") ~ "60",
+    TRUE ~ "NA"
+  )) -> retriv_1
 ```
 
 
@@ -117,12 +127,16 @@ library(ggrepel)
 ```{r}
 fig_wea +
   geom_point(data = retriv_1, mapping = aes(x=date, y=cum_rain), 
-             color = "red", size = 3) +
+             color = "red", size = 4) +
   geom_text_repel(data = retriv_1 %>% filter(year=="2021"),
             mapping=aes(x=date, y= cum_rain, 
                         label=round(cum_rain,0)),
-            box.padding = 0.7, , max.overlaps = 10
-            )
+            box.padding = 0.7,  max.overlaps = 10
+            ) +
+  geom_text(data = retriv_1,
+            mapping=aes(x=date, y= cum_rain, 
+                        label=retrival_time),
+            size = 3) 
 
 ggsave("figures/prec.png", width = 10, height = 5)
 ```
