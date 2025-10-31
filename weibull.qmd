@@ -228,6 +228,10 @@ loo_compare(loo_red2_f, loo_red4_f)
 loo_red3_f$criteria
 ```
 
+```{r}
+summary(red_m2_f)
+```
+
 
 ```{r}
 new_data <- expand.grid(
@@ -301,30 +305,56 @@ new_data1 %>%
   scale_y_continuous(limits = c(0, 107), breaks = seq(0, 100, 25)) +
   scale_x_continuous(limits = c(0, 60), breaks = seq(0, 60, 12)) +
   scale_shape_manual(values = c(16, 17, 18, 15, 8, 3)) +
+  scale_linetype_manual(values = c("solid", "solid", "solid", "dashed", "dashed", "dashed")) +
   scale_color_manual(values = pop_colors) +
   scale_fill_manual(values = pop_colors) +
   theme_foundation() +
+  geom_point(data = new_data1 %>% 
+               mutate(retrieval_time_months = round(retrieval_time_months,0)) %>% 
+               filter(retrieval_time_months %in% c(0,6,12,24,36,48,60)), 
+             mapping= aes(x = retrieval_time_months, y = predicted*100,
+                          group = population,  # group aesthetics
+                          shape = population,
+                          color = population,
+                          linetype = population   
+                          ), size = 4) +
   theme(
     legend.background = element_blank(),
     legend.title = element_blank(),
     legend.box = element_blank(),
     legend.key = element_blank(),
-    axis.title = element_blank(),
+    axis.title = element_text(size = 12),
     axis.text = element_text(size = 12),
     strip.text = element_text(size = 12, face = "bold"),
     legend.position = "bottom",
     legend.direction = "horizontal"
   ) + 
   guides(
-  color = guide_legend(override.aes = list(shape = c(16, 17, 18, 15, 8, 3)), nrow = 1),
-  shape = "none",  # suppress separate shape legend
-  fill = "none",   # suppress separate fill legend
-  size = "none"    # suppress separate size legend
+  color = guide_legend(nrow = 1),
+  shape = guide_legend(nrow = 1),
+  linetype = guide_legend(nrow = 1),
+  fill = guide_legend(nrow = 1)
 ) -> fig_viab
 
 
 ggsave("figures/seed_viability_2.png", width=6, height=6)
 ```
+
+
+```{r}
+fig_viab +
+  geom_text(aes(x = 50, y = 100),
+            label = "italic(Y) == frac(italic(d), 1 + exp(- italic(b) %*% (italic(x) - italic(e))))",
+    parse = TRUE,
+    color="#333333",
+    size = 4
+  ) -> fig_viab1
+
+ggsave("figures/seed_viability_2.png", width=6, height=6)
+```
+
+
+
 
 ```{r}
 unique(all_data$population)

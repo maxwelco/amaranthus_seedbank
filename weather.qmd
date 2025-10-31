@@ -7,6 +7,8 @@ editor: source
 ```{r}
 library(lubridate)
 library(daymetr)
+library(ggrepel)
+library(ggtext)
 ```
 
 ```{r}
@@ -132,6 +134,21 @@ comb_weather1 %>%
     date == as.Date("2020-04-01") ~ "48",
     date == as.Date("2021-04-01") ~ "60",
     TRUE ~ "NA"
+  )) %>% 
+  mutate(run = case_when(
+    date == as.Date("2016-04-01") ~ "1",
+    date == as.Date("2018-10-15") ~ "2",
+    date == as.Date("2016-10-01") ~ "1",
+    date == as.Date("2019-04-15") ~ "2",
+    date == as.Date("2017-04-01") ~ "1",
+    date == as.Date("2019-10-15") ~ "2",
+    date == as.Date("2018-04-01") ~ "1",
+    date == as.Date("2020-10-15") ~ "2",
+    date == as.Date("2019-04-01") ~ "1",
+    date == as.Date("2021-10-15") ~ "2",
+    date == as.Date("2020-04-01") ~ "1",
+    date == as.Date("2021-04-01") ~ "1",
+    TRUE ~ "NA"
   )) -> retriv_1
 ```
 
@@ -149,31 +166,95 @@ comb_weather1 %>%
   theme_foundation() +
   labs(y = "Cumulative precipitation (mm") + 
   scale_y_continuous(limits = c(0, 7500), breaks = c(0,1500,3000,4500, 6000, 7500)) +
+  scale_x_date(
+    limits = c(as.Date("2016-01-01"), as.Date("2022-01-15")),
+ #   date_breaks = "6 months",
+    date_labels = "%Y"
+  ) +
   labs(x = "", y="") +
   theme(axis.text.x = element_text(angle = 0),
         strip.text = element_text(size=12, face="bold")) -> fig_wea
 ```
 
-```{r}
-library(ggrepel)
-```
+
+
+
+
 
 
 ```{r}
 fig_wea +
-  geom_point(data = retriv_1, mapping = aes(x=date, y=cum_rain), 
-             color = "red", size = 4) +
-  geom_text_repel(data = retriv_1 %>% filter(year=="2021"),
-            mapping=aes(x=date, y= cum_rain, 
-                        label=round(cum_rain,0)),
-            box.padding = 0.7,  max.overlaps = 10
-            ) +
-  geom_text(data = retriv_1,
-            mapping=aes(x=date, y= cum_rain, 
+  geom_point(data = retriv_1 %>% filter(run == "1"), 
+             mapping = aes(x=date, y=cum_rain + 150), 
+             color = "#FFA500", size = 5) +
+  geom_point(data = retriv_1 %>% filter(run == "2"), 
+             mapping = aes(x=date, y=cum_rain - 150), 
+             color = "#4682B4", size = 5) +
+  geom_text(data = retriv_1 %>% filter(run == "1"),
+            mapping=aes(x=date, y= cum_rain + 150, 
                         label=retrival_time),
-            size = 3) 
+            size = 3) +
+  geom_text(data = retriv_1 %>% filter(run == "2"),
+            mapping=aes(x=date, y= cum_rain - 150, 
+                        label=retrival_time),
+            size = 3, color = "white") +
+  geom_text_repel(
+    data = retriv_1 %>% filter(year == "2021" & run == "1"),
+    mapping = aes(x = date, y = cum_rain, label = round(cum_rain, 0)),
+    direction = "y",         # constrain movement vertically
+    nudge_y = -800,           # push labels downward (adjust as needed)
+    box.padding = 0.7,
+    color = "#FFA500",
+    max.overlaps = 10,
+    segment.curvature = 0,   # keep connecting lines straight
+    segment.angle = 90,      # vertical lines
+    segment.ncp = 1          # number of control points (1 = straight)
+) +
+  geom_text_repel(
+    data = retriv_1 %>% filter(year == "2021" & run == "2"),
+    mapping = aes(x = date, y = cum_rain, label = round(cum_rain_filtered, 0)),
+    direction = "y",         # constrain movement vertically
+    nudge_y = 500,           # push labels downward (adjust as needed)
+    box.padding = 0.7,
+    color = "#4682B4",
+    max.overlaps = 10,
+    segment.curvature = 0,   # keep connecting lines straight
+    segment.angle = 90,      # vertical lines
+    segment.ncp = 1          # number of control points (1 = straight)
+) -> fig_wea1
+```
 
-ggsave("figures/prec.png", width = 10, height = 5)
+
+```{r}
+fig_wea1 +
+  geom_text(comb_weather1 %>% filter(location == "Corpus Christi"),
+            mapping = aes(x = as.Date("2019-06-15"), y = 250, 
+                          label = "Daily rainfall"),
+            size = 3, color = "purple") +
+  geom_text(comb_weather1 %>% filter(location == "College Station"),
+            mapping = aes(x = as.Date("2016-06-1"), y = 250, 
+                          label = "Onset of first run"),
+            size = 3, hjust=0, color = "#FFA500") +
+  geom_text(comb_weather1 %>% filter(location == "College Station"),
+            mapping = aes(x = as.Date("2018-11-30"), y = 3400, 
+                          label = "Onset of second run"),
+            size = 3, hjust=0, color="#4682B4") +
+  geom_text(comb_weather1 %>% filter(location == "Corpus Christi"),
+            mapping = aes(x = as.Date("2020-01-15"), y = 6000, 
+                          label = "Cumulative rainfall"),
+            size = 3, hjust=0, color = "#4682B4") +
+  geom_text(comb_weather1 %>% filter(location == "Corpus Christi"),
+            mapping = aes(x = as.Date("2021-04-15"), y = 2700, 
+                          label = "Cumulative \nrainfall"),
+            size = 3, color = "#FFA500") +
+  geom_text(comb_weather1 %>% filter(location == "Lubbock"),
+            mapping = aes(x = as.Date("2016-01-1"), y = 4500, 
+                          label = "Numbers inside the dots indicate seed retrieval \ntimes (in months) for each run"),
+            size = 3, hjust=0, color = "#333333") fig_wea2
+            
+            
+            
+  ggsave("figures/prec.png", width = 12, height = 4.5)
 ```
 
 
@@ -191,18 +272,61 @@ annotate("segment", x = as.Date("2016-04-01"), xend = as.Date("2016-04-01"), y =
 ```
 
 
+
 ```{r}
 comb_weather1 %>% 
   ggplot(aes(x=date)) +
   geom_ribbon(aes(ymin = tmin_deg_c, ymax = tmax_deg_c), fill = "lightblue", alpha = 0.3) +
   geom_point(aes(y = tmax_deg_c), color = "red", size = 0.6, alpha = 0.1) +
+  geom_line(aes(y = tmax_deg_c), color = "red", size = 0.6, alpha = 0.1) +
   geom_point(aes(y = tmin_deg_c), color = "blue", size = 0.6, alpha = 0.1) +
+  geom_line(aes(y = tmin_deg_c), color = "blue", size = 0.6, alpha = 0.1) +
   facet_grid(~location) +
   theme_foundation() +
-  scale_y_continuous(limits = c(0, 40)) +
-  labs(x="", y="")
+  scale_y_continuous(limits = c(-12, 45), breaks=seq(-10,40,10)) +
+  scale_x_date(
+    limits = c(as.Date("2016-01-01"), as.Date("2022-01-15")),
+ #   date_breaks = "6 months",
+    date_labels = "%Y"
+  ) +
+  labs(x="", y="") +
+  theme(axis.text.x = element_text(angle = 0),
+        strip.text = element_text(size=12, face="bold")) -> fig_temp
+```
 
-ggsave("figures/temp.png", width = 10, height = 4)
+
+```{r}
+(comb_weather1 %>% 
+  group_by(location) %>% 
+  summarise(max_mean = round(mean(tmax_deg_c,0)),
+            min_mean = round(mean(mean(tmin_deg_c,0)))
+            ) %>% 
+  mutate(date = as.Date("2019-01-15")) -> avgs1)
+```
+
+
+```{r}
+fig_temp +
+  geom_text(data = avgs1, mapping = aes(x=date, y = 45, 
+                                        label = glue::glue("Mean maximum temperature: {max_mean} C")), 
+                                        size = 3, color = "red"
+            ) +
+  geom_text(data = avgs1, mapping = aes(x=date, y = -12, 
+                                        label = glue::glue("Mean minimum temperature: {min_mean} C")), 
+                                        size = 3, color = "blue"
+            )
+  
+  
+  theme(legend.position = "none") -> fig_temp1
+
+
+ggsave("figures/temp.png", width = 12, height = 4.5)
+```
+
+
+
+```{r}
+ggsave("figures/temp.png", width = 12, height = 4.5)
 ```
 
 
