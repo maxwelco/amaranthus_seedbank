@@ -156,7 +156,8 @@ loo_red2_f <- add_criterion(red_m2_f, "loo", moment_match = TRUE)
 loo_compare(loo_full_f, loo_red2_f)
 ```
 ```{r}
-loo_red2_f$criteria
+pp_expect(loo_red2_f)  # from brms
+
 ```
 
 
@@ -731,7 +732,7 @@ ggplot(heatmap_data80, aes(x = Group2, y = Group1)) +
     low = "#d73027", mid = "white", high = "#1a9850",
     midpoint = 0.5, limits = c(0, 1)
   ) +
-  geom_text(aes(label=round(Pr_G1_gt_G2,2)), size = 2.8, color = "#333333") +
+  geom_text(aes(label=round(Pr_G1_gt_G2,2)), size = 2.8, color = "#333333", fontface = "bold") +
   scale_size_continuous(range = c(5, 9), limits = c(0, 1)) +
   guides(
     color = guide_legend(title = "Pr(G1 > G2)"),
@@ -745,8 +746,8 @@ ggplot(heatmap_data80, aes(x = Group2, y = Group1)) +
     axis.title = element_text(size = 12),
   ) +
   labs(
-    x = "Group compared against (ET80)",
-    y = "Group being evaluated (ET80)"
+    x = "Treatment compared against (ET50)",
+    y = "Treatment being evaluated (ET50)"
   ) -> fig_et_80_pair
 
 ggsave("figures/et80_pairwise_heatmap.png", width = 7, height = 6)
@@ -814,28 +815,26 @@ ggplot(heatmap_data50, aes(x = Group2, y = Group1)) +
     low = "#d73027", mid = "white", high = "#1a9850",
     midpoint = 0.5, limits = c(0, 1)
   ) +
-  geom_text(aes(label=round(Pr_G1_gt_G2,2)), size = 2.8, color = "#333333") +
+  geom_text(aes(label=round(Pr_G1_gt_G2,2)), size = 2.8, color = "#333333", fontface = "bold") +
   scale_size_continuous(range = c(5, 9), limits = c(0, 1)) +
   guides(
-    color = guide_legend(title = "Pr(G1 > G2)"),
-    size = guide_legend(title = "Pr(G1 > G2)")
+    color = guide_legend(title = "Pr(T1 > T2)"),
+    size = guide_legend(title = "Pr(T1 > T2)")
   ) +
   theme_foundation() +
   theme(
     axis.text.x = element_text(),
-    axis.text = element_text(size = 11),
+    axis.text = element_text(size = 10),
     axis.title = element_text(size = 12),
     legend.position = "bottom"
   ) +
   labs(
-    x = "Group compared against (ET50)",
-    y = "Group being evaluated (ET50)"
+    x = "Treatment compared against (ET50)",
+    y = "Treatment being evaluated (ET50)"
   ) -> fig_et_50_pair
 
 ggsave("figures/et50_pairwise_heatmap.png", width = 7, height = 6)
 ```
-
-
 
 
 
@@ -902,7 +901,7 @@ heatmap_data1 %>%
     low = "#d73027", mid = "white", high = "#1a9850",
     midpoint = 0.5, limits = c(0, 1)
   ) +
-  geom_text(aes(label=round(Pr_G1_gt_G2,2)), size = 2.7, color = "#333333") +
+  geom_text(aes(label=round(Pr_G1_gt_G2,2)), size = 2.7, color = "#333333", fontface = "bold") +
   scale_size_continuous(range = c(5, 9), limits = c(0, 1)) +
   guides(
     color = guide_legend(title = "Pr(G1 > G2)"),
@@ -916,8 +915,8 @@ heatmap_data1 %>%
     legend.position = "none",
   ) +
   labs(
-    x = "Group compared against (ET1)",
-    y = "Group being evaluated (ET1)"
+    x = "Treatment compared against (ET50)",
+    y = "Treatment being evaluated (ET50)"
   ) -> fig_et_1_pair
 
 ggsave("figures/et1_pairwise_heatmap.png", width = 7, height = 6)
@@ -945,13 +944,8 @@ final_plot <- (col1 | col2 | col3) +
   plot_annotation(tag_levels = "A")
 
 # Save the plot
-ggsave("figures/Final_figure.png", plot = final_plot, width = 15, height = 9)
-
-
-
+ggsave("figures/Final_figure.png", plot = final_plot, width = 16.5, height = 10)
 ```
-
-
 
 
 
